@@ -1,21 +1,23 @@
+use super::utils;
+
 mod bitboard;
 mod fenparser;
 mod makemove;
 mod movegen;
-mod utils;
+mod zobrist;
 
 #[derive(Debug, Default)]
 struct Board
 {
     pieces: [bitboard::BitBoard; utils::NUM_PIECE_TYPES],
-    colors: [bitboard::BitBoard; utils::NUM_COLOR_TYPES],
+    colors: [bitboard::BitBoard; utils::NUM_COLORS],
     mailbox: utils::Mailbox,
 }
 
 #[derive(Debug, Clone, Copy, Default)]
 struct State
 {
-    key: u64,
+    key: zobrist::ZobristType,
     active: utils::Color,
     castling: utils::CastlingRights,
     enpassant: Option<utils::Square>,
@@ -24,13 +26,37 @@ struct State
 }
 
 #[derive(Debug)]
-struct History([State; utils::MAX_NUM_PLIES]);
+struct History
+{
+    arr: [Option<State>; utils::MAX_NUM_PLIES],
+    len: usize
+}
 
 impl Default for History
 {
     fn default() -> Self
     {
-        History([State::default(); utils::MAX_NUM_PLIES])
+        History { arr: [None; utils::MAX_NUM_PLIES], len: 0 }
+    }
+}
+
+impl History
+{
+    pub fn push(&mut self, state: State)
+    {
+        self.arr[self.len] = Some(state);
+        self.len += 1;
+    }
+
+    pub fn pop(&mut self) -> State
+    {
+        self.len -= 1;
+        self.arr[self.len].unwrap()
+    }
+
+    pub fn length(&self) -> usize
+    {
+        self.len
     }
 }
 
@@ -40,7 +66,7 @@ pub struct Position
     board: Board,
     state: State,
     history: History,
-    // randomly generated zobrist strings
+    zobrists: zobrist::ZobristRandoms,
 }
 
 impl Position
@@ -52,17 +78,17 @@ impl Position
         Ok(pos)
     }
 
-    pub fn movegen(&self)
+    pub fn generate_moves(&self, movelist: &mut movegen::MoveList)
     {
-
+        movegen::generate(self, movelist);
     }
 
-    pub fn makemove(&mut self, mov: makemove::Move)
+    pub fn make_move(&mut self, mov: makemove::Move)
     {
         makemove::make(self, mov);
     }
 
-    pub fn unmakemove(&mut self)
+    pub fn unmake_move(&mut self)
     {
         makemove::unmake(self);
     }
