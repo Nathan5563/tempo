@@ -9,7 +9,7 @@ const PRNG_SEED: u64 = 42;
 pub struct ZobristRandoms
 {
     active: [ZobristType; utils::NUM_COLORS],
-    pieces: [[[ZobristType; utils::NUM_SQUARES]; utils::NUM_PIECE_TYPES]; utils::NUM_COLORS],
+    pieces: [[[ZobristType; utils::NUM_SQUARES]; utils::NUM_PIECE_KINDS]; utils::NUM_COLORS],
     castling: [ZobristType; NUM_CASTLING_STATES],
     enpassant: [ZobristType; NUM_ENPASSANT_STATES],
 }
@@ -21,12 +21,12 @@ impl Default for ZobristRandoms
         let mut rng = prng::Xoshiro256StarStar::from_seed(PRNG_SEED);
         let active = [(); utils::NUM_COLORS].map(|_| rng.next_u64());
         let pieces = [(); utils::NUM_COLORS].map(|_| {
-            [(); utils::NUM_PIECE_TYPES].map(|_| {
+            [(); utils::NUM_PIECE_KINDS].map(|_| {
                 [(); utils::NUM_SQUARES].map(|_| rng.next_u64())
             })
         });
         let castling = [(); NUM_CASTLING_STATES].map(|_| rng.next_u64());
         let enpassant = [(); NUM_ENPASSANT_STATES].map(|_| rng.next_u64());
-        ZobristRandoms { active, pieces, castling, enpassant }
+        Self { active, pieces, castling, enpassant }
     }
 }

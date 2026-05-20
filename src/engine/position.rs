@@ -9,7 +9,7 @@ mod zobrist;
 #[derive(Debug, Default)]
 struct Board
 {
-    pieces: [bitboard::BitBoard; utils::NUM_PIECE_TYPES],
+    pieces: [bitboard::BitBoard; utils::NUM_PIECE_KINDS],
     colors: [bitboard::BitBoard; utils::NUM_COLORS],
     mailbox: utils::Mailbox,
 }
@@ -25,10 +25,17 @@ struct State
     fullmoves: u16,
 }
 
+#[derive(Debug, Clone, Copy, Default)]
+struct Undo
+{
+    state: State,
+    captured: Option<utils::Piece>,
+}
+
 #[derive(Debug)]
 struct History
 {
-    arr: [Option<State>; utils::MAX_NUM_PLIES],
+    arr: [Undo; utils::MAX_NUM_PLIES],
     len: usize
 }
 
@@ -36,22 +43,22 @@ impl Default for History
 {
     fn default() -> Self
     {
-        History { arr: [None; utils::MAX_NUM_PLIES], len: 0 }
+        Self { arr: [Undo::default(); utils::MAX_NUM_PLIES], len: 0 }
     }
 }
 
 impl History
 {
-    pub fn push(&mut self, state: State)
+    pub fn push(&mut self, undo: Undo)
     {
-        self.arr[self.len] = Some(state);
+        self.arr[self.len] = undo;
         self.len += 1;
     }
 
-    pub fn pop(&mut self) -> State
+    pub fn pop(&mut self) -> Undo
     {
         self.len -= 1;
-        self.arr[self.len].unwrap()
+        self.arr[self.len]
     }
 
     pub fn length(&self) -> usize
@@ -73,7 +80,7 @@ impl Position
 {
     pub fn new(fen: &str) -> Result<Self, fenparser::Error>
     {
-        let pos = Position::default();
+        let pos = Self::default();
         fenparser::parse(fen, &pos)?;
         Ok(pos)
     }
@@ -88,8 +95,8 @@ impl Position
         makemove::make(self, mov);
     }
 
-    pub fn unmake_move(&mut self)
+    pub fn unmake_move(&mut self, mov: makemove::Move)
     {
-        makemove::unmake(self);
+        makemove::unmake(self, mov);
     }
 }

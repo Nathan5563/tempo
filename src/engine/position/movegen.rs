@@ -7,7 +7,7 @@ impl Default for MoveList
 {
     fn default() -> Self
     {
-        MoveList([makemove::Move::default(); utils::MAX_NUM_MOVES])
+        Self([makemove::Move::default(); utils::MAX_NUM_MOVES])
     }
 }
 
