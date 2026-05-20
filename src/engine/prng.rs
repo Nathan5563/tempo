@@ -79,3 +79,120 @@ impl SplitMix64
         z ^ (z >> 31)
     }
 }
+
+#[cfg(test)]
+mod tests
+{
+    use super::*;
+
+    #[test]
+    fn splitmix64_new_stores_seed_as_initial_state()
+    {
+        let rng = SplitMix64::new(0x0123_4567_89ab_cdef);
+
+        assert_eq!(rng.0, 0x0123_4567_89ab_cdef);
+    }
+
+    #[test]
+    fn splitmix64_matches_reference_sequence_from_zero_seed()
+    {
+        let mut rng = SplitMix64::new(0);
+        let expected = [
+            0xe220_a839_7b1d_cdaf,
+            0x6e78_9e6a_a1b9_65f4,
+            0x06c4_5d18_8009_454f,
+            0xf88b_b8a8_724c_81ec,
+            0x1b39_896a_51a8_749b,
+            0x53cb_9f0c_747e_a2ea,
+            0x2c82_9abe_1f45_32e1,
+            0xc584_133a_c916_ab3c,
+        ];
+
+        for value in expected
+        {
+            assert_eq!(rng.next_u64(), value);
+        }
+        assert_eq!(rng.0, 0xf1bb_cdcb_fa53_e0a8);
+    }
+
+    #[test]
+    fn splitmix64_wraps_state_before_mixing()
+    {
+        let mut rng = SplitMix64::new(u64::MAX);
+
+        assert_eq!(rng.next_u64(), 0xe4d9_7177_1b65_2c20);
+        assert_eq!(rng.0, 0x9e37_79b9_7f4a_7c14);
+    }
+
+    #[test]
+    fn xoshiro_from_seed_expands_state_with_splitmix64()
+    {
+        let rng = Xoshiro256StarStar::from_seed(42);
+
+        assert_eq!(
+            rng.0,
+            [
+                0xbdd7_3226_2feb_6e95,
+                0x28ef_e333_b266_f103,
+                0x4752_6757_130f_9f52,
+                0x581c_e1ff_0e4a_e394,
+            ]
+        );
+    }
+
+    #[test]
+    fn xoshiro_matches_reference_sequence_from_seed_42()
+    {
+        let mut rng = Xoshiro256StarStar::from_seed(42);
+        let expected = [
+            0x1578_0b2e_0c2e_c716,
+            0x6104_d986_6d11_3a7e,
+            0xae17_5332_39e4_99a1,
+            0xecb8_ad47_03b3_60a1,
+            0xfde6_dc7f_e2ec_5e64,
+            0xc50d_a531_0179_5238,
+            0xb821_5485_5a65_ddb2,
+            0xd99a_2743_ebe6_0087,
+        ];
+
+        for value in expected
+        {
+            assert_eq!(rng.next_u64(), value);
+        }
+    }
+
+    #[test]
+    fn xoshiro_next_u64_updates_internal_state_after_returning_result()
+    {
+        let mut rng = Xoshiro256StarStar::from_seed(0);
+
+        assert_eq!(rng.next_u64(), 0x99ec_5f36_cb75_f2b4);
+        assert_eq!(
+            rng.0,
+            [
+                0x74d3_8efb_a8e8_29b7,
+                0x8a9c_6b4b_5aad_ed14,
+                0xd831_b653_30fc_88e0,
+                0xbc83_12de_64d8_5a7e,
+            ]
+        );
+    }
+
+    #[test]
+    fn xoshiro_same_seed_instances_are_deterministic_and_independent()
+    {
+        let mut left = Xoshiro256StarStar::from_seed(42);
+        let mut right = Xoshiro256StarStar::from_seed(42);
+
+        assert_eq!(left.next_u64(), right.next_u64());
+        assert_eq!(left.next_u64(), right.next_u64());
+
+        let left_third = left.next_u64();
+        let left_fourth = left.next_u64();
+        let right_third = right.next_u64();
+
+        assert_eq!(right_third, left_third);
+        assert_ne!(right_third, left_fourth);
+        assert_eq!(right.next_u64(), left_fourth);
+    }
+}

@@ -11,7 +11,12 @@ impl Default for MoveList
     }
 }
 
+pub fn is_legal(pos: &Position, mov: makemove::Move) -> bool
+{
+    todo!("Implement legality checking")
+}
+
 pub fn generate(pos: &Position, movelist: &mut MoveList)
 {
-
+    todo!("Implement move generation")
 }

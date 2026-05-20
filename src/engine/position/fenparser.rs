@@ -5,7 +5,7 @@ pub enum Error
     
 }
 
-pub fn parse(fen: &str, pos: &Position) -> Result<(), Error>
+pub fn parse(fen: &str, pos: &mut Position) -> Result<(), Error>
 {
     todo!("Implement fen parser")
 }
