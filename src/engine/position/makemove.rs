@@ -96,9 +96,14 @@ impl Move
     {
         (self.0 & PROMOTION_FLAG) != 0
     }
+
+    // self is assumed to be pseudolegal to begin with
+    pub fn is_legal(&self, pos: &Position) -> bool
+    {
+        todo!("Implement legality checking")
+    }
 }
 
-// TODO: Implement make function
 pub fn make(pos: &mut Position, mov: Move)
 {
     let from = mov.from();
@@ -108,12 +113,13 @@ pub fn make(pos: &mut Position, mov: Move)
     // modify board (bitboards, mailbox)
     // modify state (active, enpassant, castling, halfmoves, fullmoves, new zobrist key)
     // modify history (push new state, captured piece if any)
+    todo!()
 }
 
-// TODO: Implement unmake function
 pub fn unmake(pos: &mut Position, mov: Move)
 {
     // modify history (pop undo information)
     // modify state (reset from undo information)
     // modify board (bitboards, mailbox)
+    todo!()
 }
