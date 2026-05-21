@@ -30,7 +30,12 @@ impl Board
         self.mailbox[square] = None;
     }
 
-    fn move_piece(&mut self, from: utils::Square, to: utils::Square, piece: utils::Piece)
+    fn move_piece(
+        &mut self,
+        from: utils::Square,
+        to: utils::Square,
+        piece: utils::Piece,
+    )
     {
         self.clear_piece(from, piece);
         self.set_piece(to, piece);
@@ -327,33 +332,18 @@ mod tests
     }
 
     #[test]
-    fn position_new_is_blocked_until_fen_parser_exists()
+    fn position_new_parses_fen_and_hashes_state()
     {
-        let result = std::thread::Builder::new()
-            .stack_size(8 * 1024 * 1024)
-            .spawn(|| {
-                let _ = Position::new("8/8/8/8/8/8/8/8 w - - 0 1");
-            })
-            .unwrap()
-            .join();
+        let pos = Position::new("8/8/8/8/4P3/8/8/8 b - e3 0 1").unwrap();
 
-        let payload = result.unwrap_err();
-        let message = payload
-            .downcast_ref::<&str>()
-            .copied()
-            .or_else(|| payload.downcast_ref::<String>().map(String::as_str))
-            .unwrap_or("");
-
-        assert!(message.contains("Implement fen parser"));
-    }
-
-    #[test]
-    #[should_panic(expected = "Implement move generation")]
-    fn generate_moves_is_blocked_until_movegen_exists()
-    {
-        let pos = Position::default();
-        let mut movelist = movegen::MoveList::default();
-
-        pos.generate_moves(&mut movelist);
+        assert_eq!(
+            pos.board.mailbox[utils::Square::E4],
+            Some(piece(utils::Color::White, utils::PieceKind::Pawn))
+        );
+        assert_eq!(pos.state.active, utils::Color::Black);
+        assert_eq!(pos.state.enpassant, Some(utils::Square::E3));
+        assert_eq!(pos.state.halfmoves, 0);
+        assert_eq!(pos.state.fullmoves, 1);
+        assert_eq!(pos.state.key, pos.zobrists.hash(&pos));
     }
 }

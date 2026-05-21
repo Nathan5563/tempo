@@ -120,7 +120,8 @@ pub fn make(pos: &mut Position, mov: Move)
     };
 
     update_board(pos, from, to, kind, old_state.active, moved, captured);
-    pos.state = update_state(&pos.zobrists, old_state, from, to, kind, moved, captured);
+    pos.state =
+        update_state(&pos.zobrists, old_state, from, to, kind, moved, captured);
     pos.history.push(Undo { state: old_state, mov: mov, captured: captured });
 }
 
@@ -351,7 +352,8 @@ fn update_key(
 
     key ^= zobrists.piece(placed_piece(moved, kind), to);
 
-    if let Some((rook_from, rook_to)) = castling_rook_squares(old_state.active, kind)
+    if let Some((rook_from, rook_to)) =
+        castling_rook_squares(old_state.active, kind)
     {
         let rook = utils::Piece {
             color: old_state.active,
@@ -364,14 +366,29 @@ fn update_key(
     key
 }
 
-fn castling_rook_squares(active: utils::Color, kind: MoveKind) -> Option<(utils::Square, utils::Square)>
+fn castling_rook_squares(
+    active: utils::Color,
+    kind: MoveKind,
+) -> Option<(utils::Square, utils::Square)>
 {
     match (active, kind)
     {
-        (utils::Color::White, MoveKind::KingCastle) => Some((utils::Square::H1, utils::Square::F1)),
-        (utils::Color::White, MoveKind::QueenCastle) => Some((utils::Square::A1, utils::Square::D1)),
-        (utils::Color::Black, MoveKind::KingCastle) => Some((utils::Square::H8, utils::Square::F8)),
-        (utils::Color::Black, MoveKind::QueenCastle) => Some((utils::Square::A8, utils::Square::D8)),
+        (utils::Color::White, MoveKind::KingCastle) =>
+        {
+            Some((utils::Square::H1, utils::Square::F1))
+        }
+        (utils::Color::White, MoveKind::QueenCastle) =>
+        {
+            Some((utils::Square::A1, utils::Square::D1))
+        }
+        (utils::Color::Black, MoveKind::KingCastle) =>
+        {
+            Some((utils::Square::H8, utils::Square::F8))
+        }
+        (utils::Color::Black, MoveKind::QueenCastle) =>
+        {
+            Some((utils::Square::A8, utils::Square::D8))
+        }
         _ => None,
     }
 }
@@ -382,10 +399,22 @@ fn placed_piece(moved: utils::Piece, kind: MoveKind) -> utils::Piece
         color: moved.color,
         kind: match kind
         {
-            MoveKind::PromoteKnight | MoveKind::PromoteKnightCapture => utils::PieceKind::Knight,
-            MoveKind::PromoteBishop | MoveKind::PromoteBishopCapture => utils::PieceKind::Bishop,
-            MoveKind::PromoteRook | MoveKind::PromoteRookCapture => utils::PieceKind::Rook,
-            MoveKind::PromoteQueen | MoveKind::PromoteQueenCapture => utils::PieceKind::Queen,
+            MoveKind::PromoteKnight | MoveKind::PromoteKnightCapture =>
+            {
+                utils::PieceKind::Knight
+            }
+            MoveKind::PromoteBishop | MoveKind::PromoteBishopCapture =>
+            {
+                utils::PieceKind::Bishop
+            }
+            MoveKind::PromoteRook | MoveKind::PromoteRookCapture =>
+            {
+                utils::PieceKind::Rook
+            }
+            MoveKind::PromoteQueen | MoveKind::PromoteQueenCapture =>
+            {
+                utils::PieceKind::Queen
+            }
             _ => moved.kind,
         },
     }
@@ -426,7 +455,9 @@ mod tests
         assert_eq!(pos.state.key, pos.zobrists.hash(pos));
     }
 
-    fn mailbox_snapshot(pos: &Position) -> [Option<utils::Piece>; utils::NUM_SQUARES]
+    fn mailbox_snapshot(
+        pos: &Position,
+    ) -> [Option<utils::Piece>; utils::NUM_SQUARES]
     {
         let mut snapshot = [None; utils::NUM_SQUARES];
         for square in utils::SQUARES
@@ -436,7 +467,10 @@ mod tests
         snapshot
     }
 
-    fn assert_mailbox_eq(pos: &Position, expected: [Option<utils::Piece>; utils::NUM_SQUARES])
+    fn assert_mailbox_eq(
+        pos: &Position,
+        expected: [Option<utils::Piece>; utils::NUM_SQUARES],
+    )
     {
         for square in utils::SQUARES
         {
@@ -460,8 +494,10 @@ mod tests
 
     fn assert_board_consistent(pos: &Position)
     {
-        let mut pieces = [super::super::bitboard::BitBoard::default(); utils::NUM_PIECE_KINDS];
-        let mut colors = [super::super::bitboard::BitBoard::default(); utils::NUM_COLORS];
+        let mut pieces = [super::super::bitboard::BitBoard::default();
+            utils::NUM_PIECE_KINDS];
+        let mut colors =
+            [super::super::bitboard::BitBoard::default(); utils::NUM_COLORS];
 
         for square in utils::SQUARES
         {
@@ -514,7 +550,8 @@ mod tests
             (MoveKind::PromoteQueenCapture, true, true),
         ];
 
-        for (index, (kind, is_capture, is_promotion)) in cases.into_iter().enumerate()
+        for (index, (kind, is_capture, is_promotion)) in
+            cases.into_iter().enumerate()
         {
             let from = utils::SQUARES[index];
             let to = utils::SQUARES[utils::NUM_SQUARES - 1 - index];
@@ -580,7 +617,8 @@ mod tests
     {
         let mut pos = pos_with_active(utils::Color::White);
         let knight = piece(utils::Color::White, utils::PieceKind::Knight);
-        let mov = Move::new(utils::Square::G1, utils::Square::F3, MoveKind::Quiet);
+        let mov =
+            Move::new(utils::Square::G1, utils::Square::F3, MoveKind::Quiet);
 
         pos.board.set_piece(utils::Square::G1, knight);
         pos.state.enpassant = Some(utils::Square::A3);
@@ -669,7 +707,8 @@ mod tests
         let mut pos = pos_with_active(utils::Color::White);
         let bishop = piece(utils::Color::White, utils::PieceKind::Bishop);
         let rook = piece(utils::Color::Black, utils::PieceKind::Rook);
-        let mov = Move::new(utils::Square::G7, utils::Square::H8, MoveKind::Capture);
+        let mov =
+            Move::new(utils::Square::G7, utils::Square::H8, MoveKind::Capture);
 
         pos.board.set_piece(utils::Square::G7, bishop);
         pos.board.set_piece(utils::Square::H8, rook);
@@ -704,7 +743,11 @@ mod tests
         let mut pos = pos_with_active(utils::Color::White);
         let white_pawn = piece(utils::Color::White, utils::PieceKind::Pawn);
         let black_pawn = piece(utils::Color::Black, utils::PieceKind::Pawn);
-        let mov = Move::new(utils::Square::E5, utils::Square::D6, MoveKind::EnPassant);
+        let mov = Move::new(
+            utils::Square::E5,
+            utils::Square::D6,
+            MoveKind::EnPassant,
+        );
 
         pos.board.set_piece(utils::Square::E5, white_pawn);
         pos.board.set_piece(utils::Square::D5, black_pawn);
@@ -739,7 +782,11 @@ mod tests
         let mut pos = pos_with_active(utils::Color::White);
         let pawn = piece(utils::Color::White, utils::PieceKind::Pawn);
         let queen = piece(utils::Color::White, utils::PieceKind::Queen);
-        let mov = Move::new(utils::Square::A7, utils::Square::A8, MoveKind::PromoteQueen);
+        let mov = Move::new(
+            utils::Square::A7,
+            utils::Square::A8,
+            MoveKind::PromoteQueen,
+        );
 
         pos.board.set_piece(utils::Square::A7, pawn);
         refresh_key(&mut pos);
@@ -912,7 +959,15 @@ mod tests
             ),
         ];
 
-        for (active, kind, king_from, king_to, rook_from, rook_to, expected_rights) in cases
+        for (
+            active,
+            kind,
+            king_from,
+            king_to,
+            rook_from,
+            rook_to,
+            expected_rights,
+        ) in cases
         {
             let mut pos = pos_with_active(active);
             let king = piece(active, utils::PieceKind::King);
@@ -951,7 +1006,8 @@ mod tests
     {
         let mut pos = pos_with_active(utils::Color::White);
         let knight = piece(utils::Color::White, utils::PieceKind::Knight);
-        let mov = Move::new(utils::Square::B1, utils::Square::C3, MoveKind::Quiet);
+        let mov =
+            Move::new(utils::Square::B1, utils::Square::C3, MoveKind::Quiet);
 
         pos.board.set_piece(utils::Square::B1, knight);
         refresh_key(&mut pos);

@@ -59,7 +59,9 @@ mod tests
 
         assert_eq!(
             bitboard.0,
-            bit(utils::Square::A1) | bit(utils::Square::D4) | bit(utils::Square::H8)
+            bit(utils::Square::A1) 
+            | bit(utils::Square::D4) 
+            | bit(utils::Square::H8)
         );
     }
 

@@ -2,8 +2,7 @@ pub const NUM_SQUARES: usize = 64;
 pub const NUM_PIECE_KINDS: usize = 6;
 pub const NUM_COLORS: usize = 2;
 
-// https://wismuth.com/chess/longest-game.html
-pub const MAX_NUM_PLIES: usize = 17697;
+pub const MAX_NUM_PLIES: usize = 2048;
 
 // https://lichess.org/@/Tobs40/blog/why-a-reachable-position-can-have-at-most-218-playable-moves/a5xdxeqs
 pub const MAX_NUM_MOVES: usize = 218;
@@ -125,7 +124,6 @@ impl CastlingRights
     pub const BLACK_KINGSIDE: u8  = 0b0100;
     pub const BLACK_QUEENSIDE: u8 = 0b1000;
 
-    #[cfg(test)]
     pub fn from_bits(bits: u8) -> Self
     {
         Self(bits)
@@ -186,7 +184,7 @@ mod tests
         assert_eq!(NUM_SQUARES, 64);
         assert_eq!(NUM_PIECE_KINDS, 6);
         assert_eq!(NUM_COLORS, 2);
-        assert_eq!(MAX_NUM_PLIES, 17697);
+        assert_eq!(MAX_NUM_PLIES, 2048);
         assert_eq!(MAX_NUM_MOVES, 218);
 
         assert_eq!(Square::A1 as usize, 0);
