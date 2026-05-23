@@ -9,9 +9,9 @@ major version is `0`, there is no promise of public API stability, or even a pub
 
 - `0.1.0`: board representation, FEN parsing, move encoding, make/unmake
 - `0.2.0`: legal move generation, magic bitboards, and perft verification
-- `0.3.0`: alpha-beta search with iterative deepening
-- `0.4.0`: material counting and PSQT evaluation
-- `0.5.0`: UCI support
+- `0.3.0`: UCI support
+- `0.4.0`: alpha-beta search with iterative deepening
+- `0.5.0`: material counting and PSQT evaluation
 - `0.6.0`: time management and stable testing harness
 
 ## Status

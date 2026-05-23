@@ -7,9 +7,9 @@ A good versioning scheme may be
 
 0.1.0   board representation, FEN parsing, move encoding, make/unmake
 0.2.0   legal move generation + perft verified
-0.3.0   alpha-beta search with iterative deepening
-0.4.0   material counting + PSQT evaluation
-0.5.0   UCI support
+0.3.0   UCI support
+0.4.0   alpha-beta search with iterative deepening
+0.5.0   material counting + PSQT evaluation
 0.6.0   time management + stable testing harness
 
 From here onward, each version gets its own branch and must pass regression testing. Strength-focused branches merge only if they show a statistically meaningful Elo gain.
