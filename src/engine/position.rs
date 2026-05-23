@@ -6,6 +6,10 @@ mod makemove;
 mod movegen;
 mod zobrist;
 
+pub use self::fenparser::Error as FenError;
+pub use self::makemove::{Move, MoveKind};
+pub use self::movegen::MoveList;
+
 #[derive(Debug, Default)]
 struct Board
 {
@@ -17,6 +21,12 @@ struct Board
 
 impl Board
 {
+    fn occupied(&self) -> bitboard::BitBoard
+    {
+        self.colors[utils::Color::White as usize]
+            | self.colors[utils::Color::Black as usize]
+    }
+
     fn set_piece(&mut self, square: utils::Square, piece: utils::Piece)
     {
         self.pieces[piece.kind as usize].set(square);
@@ -94,11 +104,6 @@ impl History
         self.len -= 1;
         self.arr[self.len]
     }
-
-    pub fn length(&self) -> usize
-    {
-        self.len
-    }
 }
 
 #[derive(Debug, Default)]
@@ -112,7 +117,7 @@ pub struct Position
 
 impl Position
 {
-    pub fn new(fen: &str) -> Result<Self, fenparser::Error>
+    pub fn new(fen: &str) -> Result<Self, FenError>
     {
         let mut pos = Self::default();
         fenparser::parse(fen, &mut pos)?;
@@ -120,12 +125,12 @@ impl Position
         Ok(pos)
     }
 
-    pub fn generate_moves(&mut self, movelist: &mut movegen::MoveList)
+    pub fn generate_moves(&mut self, movelist: &mut MoveList)
     {
         movegen::generate(self, movelist);
     }
 
-    pub fn make_move(&mut self, mov: makemove::Move)
+    pub fn make_move(&mut self, mov: Move)
     {
         makemove::make(self, mov);
     }
@@ -251,7 +256,7 @@ mod tests
     }
 
     #[test]
-    fn history_push_pop_is_lifo_and_tracks_length()
+    fn history_push_pop_is_lifo()
     {
         let first = Undo {
             state: State {
@@ -287,24 +292,18 @@ mod tests
         };
         let mut history = History::default();
 
-        assert_eq!(history.length(), 0);
-
         history.push(first);
         history.push(second);
-
-        assert_eq!(history.length(), 2);
 
         let popped = history.pop();
         assert_state_eq(popped.state, second.state);
         assert_eq!(popped.mov, second.mov);
         assert_eq!(popped.captured, second.captured);
-        assert_eq!(history.length(), 1);
 
         let popped = history.pop();
         assert_state_eq(popped.state, first.state);
         assert_eq!(popped.mov, first.mov);
         assert_eq!(popped.captured, first.captured);
-        assert_eq!(history.length(), 0);
     }
 
     #[test]
@@ -330,7 +329,6 @@ mod tests
         assert_eq!(pos.state.enpassant, None);
         assert_eq!(pos.state.halfmoves, 0);
         assert_eq!(pos.state.fullmoves, 0);
-        assert_eq!(pos.history.length(), 0);
     }
 
     #[test]
@@ -355,14 +353,31 @@ mod tests
         assert_eq!(pos.board.mailbox[utils::Square::E4], Some(pawn));
         assert_eq!(pos.state.active, utils::Color::Black);
         assert_eq!(pos.state.enpassant, Some(utils::Square::E3));
-        assert_eq!(pos.history.length(), 1);
 
         pos.unmake_move();
 
         assert_eq!(pos.board.mailbox[utils::Square::E2], Some(pawn));
         assert_eq!(pos.board.mailbox[utils::Square::E4], None);
         assert_state_eq(pos.state, old_state);
-        assert_eq!(pos.history.length(), 0);
+    }
+
+    #[test]
+    fn position_generate_moves_delegates_to_movegen()
+    {
+        let mut pos = Position::new(
+            "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1",
+        ).unwrap();
+        let mut movelist = movegen::MoveList::default();
+
+        pos.generate_moves(&mut movelist);
+
+        assert_eq!(movelist.len(), 20);
+    }
+
+    #[test]
+    fn position_new_returns_parse_errors()
+    {
+        assert!(Position::new("not a fen").is_err());
     }
 
     #[test]

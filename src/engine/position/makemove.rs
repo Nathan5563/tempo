@@ -4,7 +4,6 @@ const SRC_MASK: u16 = 0b111111_000000_0000;
 const DEST_MASK: u16 = 0b000000_111111_0000;
 const KIND_MASK: u16 = 0b000000_000000_1111;
 
-const SRC_BITS: u16 = 6;
 const DEST_BITS: u16 = 6;
 const KIND_BITS: u16 = 4;
 
@@ -523,7 +522,6 @@ mod tests
     {
         let old_mailbox = mailbox_snapshot(pos);
         let old_state = pos.state;
-        let old_history_len = pos.history.length();
 
         make(pos, mov);
         assert_board_consistent(pos);
@@ -532,7 +530,6 @@ mod tests
         unmake(pos);
         assert_mailbox_eq(pos, old_mailbox);
         assert_state_eq(pos.state, old_state);
-        assert_eq!(pos.history.length(), old_history_len);
         assert_board_consistent(pos);
         assert_key_is_fresh(pos);
     }
@@ -641,7 +638,6 @@ mod tests
         assert_eq!(pos.state.enpassant, None);
         assert_eq!(pos.state.halfmoves, old_state.halfmoves + 1);
         assert_eq!(pos.state.fullmoves, old_state.fullmoves);
-        assert_eq!(pos.history.length(), 1);
         assert_state_eq(pos.history.arr[0].state, old_state);
         assert_eq!(pos.history.arr[0].mov, mov);
         assert_eq!(pos.history.arr[0].captured, None);
@@ -653,7 +649,6 @@ mod tests
         assert_eq!(pos.board.mailbox[utils::Square::G1], Some(knight));
         assert_eq!(pos.board.mailbox[utils::Square::F3], None);
         assert_state_eq(pos.state, old_state);
-        assert_eq!(pos.history.length(), 0);
         assert_board_consistent(&pos);
         assert_key_is_fresh(&pos);
     }
@@ -702,7 +697,6 @@ mod tests
 
             assert_eq!(pos.board.mailbox[from], Some(pawn));
             assert_eq!(pos.board.mailbox[to], None);
-            assert_eq!(pos.history.length(), 0);
             assert_board_consistent(&pos);
             assert_key_is_fresh(&pos);
         }
@@ -739,7 +733,6 @@ mod tests
         assert_eq!(pos.board.mailbox[utils::Square::G7], Some(bishop));
         assert_eq!(pos.board.mailbox[utils::Square::H8], Some(rook));
         assert_eq!(pos.state.castling.bits(), ALL_RIGHTS);
-        assert_eq!(pos.history.length(), 0);
         assert_board_consistent(&pos);
         assert_key_is_fresh(&pos);
     }
@@ -778,7 +771,6 @@ mod tests
         assert_eq!(pos.board.mailbox[utils::Square::D5], Some(black_pawn));
         assert_eq!(pos.board.mailbox[utils::Square::D6], None);
         assert_eq!(pos.state.enpassant, Some(utils::Square::D6));
-        assert_eq!(pos.history.length(), 0);
         assert_board_consistent(&pos);
         assert_key_is_fresh(&pos);
     }
@@ -810,7 +802,6 @@ mod tests
 
         assert_eq!(pos.board.mailbox[utils::Square::A7], Some(pawn));
         assert_eq!(pos.board.mailbox[utils::Square::A8], None);
-        assert_eq!(pos.history.length(), 0);
         assert_board_consistent(&pos);
         assert_key_is_fresh(&pos);
     }
@@ -848,7 +839,6 @@ mod tests
 
         assert_eq!(pos.board.mailbox[utils::Square::G7], Some(pawn));
         assert_eq!(pos.board.mailbox[utils::Square::H8], Some(rook));
-        assert_eq!(pos.history.length(), 0);
         assert_board_consistent(&pos);
         assert_key_is_fresh(&pos);
     }
@@ -1002,7 +992,6 @@ mod tests
             assert_eq!(pos.board.mailbox[king_to], None);
             assert_eq!(pos.board.mailbox[rook_to], None);
             assert_eq!(pos.state.castling.bits(), ALL_RIGHTS);
-            assert_eq!(pos.history.length(), 0);
             assert_board_consistent(&pos);
             assert_key_is_fresh(&pos);
         }

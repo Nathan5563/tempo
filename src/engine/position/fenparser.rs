@@ -381,7 +381,6 @@ mod tests
         assert_eq!(pos.state.enpassant, None);
         assert_eq!(pos.state.halfmoves, 0);
         assert_eq!(pos.state.fullmoves, 1);
-        assert_eq!(pos.history.length(), 0);
     }
 
     #[test]
