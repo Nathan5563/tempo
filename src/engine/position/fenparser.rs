@@ -366,6 +366,14 @@ mod tests
             pos.board.mailbox[utils::Square::H7],
             Some(piece(utils::Color::Black, utils::PieceKind::Pawn))
         );
+        assert_eq!(
+            pos.board.kings[utils::Color::White as usize],
+            utils::Square::E1
+        );
+        assert_eq!(
+            pos.board.kings[utils::Color::Black as usize],
+            utils::Square::E8
+        );
         assert_eq!(pos.board.mailbox[utils::Square::E4], None);
         assert_eq!(pos.state.key, 0);
         assert_eq!(pos.state.active, utils::Color::White);

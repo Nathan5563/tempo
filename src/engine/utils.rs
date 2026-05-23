@@ -3,9 +3,7 @@ pub const NUM_PIECE_KINDS: usize = 6;
 pub const NUM_COLORS: usize = 2;
 
 pub const MAX_NUM_PLIES: usize = 2048;
-
-// https://lichess.org/@/Tobs40/blog/why-a-reachable-position-can-have-at-most-218-playable-moves/a5xdxeqs
-pub const MAX_NUM_MOVES: usize = 218;
+pub const MAX_NUM_MOVES: usize = 256;
 
 #[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
 #[repr(u8)]
@@ -185,7 +183,7 @@ mod tests
         assert_eq!(NUM_PIECE_KINDS, 6);
         assert_eq!(NUM_COLORS, 2);
         assert_eq!(MAX_NUM_PLIES, 2048);
-        assert_eq!(MAX_NUM_MOVES, 218);
+        assert_eq!(MAX_NUM_MOVES, 256);
 
         assert_eq!(Square::A1 as usize, 0);
         assert_eq!(Square::H8 as usize, NUM_SQUARES - 1);

@@ -12,6 +12,7 @@ struct Board
     pieces: [bitboard::BitBoard; utils::NUM_PIECE_KINDS],
     colors: [bitboard::BitBoard; utils::NUM_COLORS],
     mailbox: utils::Mailbox,
+    kings: [utils::Square; utils::NUM_COLORS],
 }
 
 impl Board
@@ -21,6 +22,10 @@ impl Board
         self.pieces[piece.kind as usize].set(square);
         self.colors[piece.color as usize].set(square);
         self.mailbox[square] = Some(piece);
+        if piece.kind == utils::PieceKind::King
+        {
+            self.kings[piece.color as usize] = square;
+        }
     }
 
     fn clear_piece(&mut self, square: utils::Square, piece: utils::Piece)
@@ -115,7 +120,7 @@ impl Position
         Ok(pos)
     }
 
-    pub fn generate_moves(&self, movelist: &mut movegen::MoveList)
+    pub fn generate_moves(&mut self, movelist: &mut movegen::MoveList)
     {
         movegen::generate(self, movelist);
     }
@@ -167,12 +172,26 @@ mod tests
         let mut board = Board::default();
         let knight = piece(utils::Color::White, utils::PieceKind::Knight);
         let rook = piece(utils::Color::Black, utils::PieceKind::Rook);
+        let white_king = piece(utils::Color::White, utils::PieceKind::King);
+        let black_king = piece(utils::Color::Black, utils::PieceKind::King);
 
         board.set_piece(utils::Square::B1, knight);
         board.set_piece(utils::Square::H8, rook);
+        board.set_piece(utils::Square::E1, white_king);
+        board.set_piece(utils::Square::E8, black_king);
 
         assert_eq!(board.mailbox[utils::Square::B1], Some(knight));
         assert_eq!(board.mailbox[utils::Square::H8], Some(rook));
+        assert_eq!(board.mailbox[utils::Square::E1], Some(white_king));
+        assert_eq!(board.mailbox[utils::Square::E8], Some(black_king));
+        assert_eq!(
+            board.kings[utils::Color::White as usize],
+            utils::Square::E1
+        );
+        assert_eq!(
+            board.kings[utils::Color::Black as usize],
+            utils::Square::E8
+        );
         assert_eq!(
             board.pieces[utils::PieceKind::Knight as usize],
             bitboard_with(&[utils::Square::B1])
@@ -182,25 +201,40 @@ mod tests
             bitboard_with(&[utils::Square::H8])
         );
         assert_eq!(
+            board.pieces[utils::PieceKind::King as usize],
+            bitboard_with(&[utils::Square::E1, utils::Square::E8])
+        );
+        assert_eq!(
             board.colors[utils::Color::White as usize],
-            bitboard_with(&[utils::Square::B1])
+            bitboard_with(&[utils::Square::B1, utils::Square::E1])
         );
         assert_eq!(
             board.colors[utils::Color::Black as usize],
-            bitboard_with(&[utils::Square::H8])
+            bitboard_with(&[utils::Square::H8, utils::Square::E8])
         );
 
         board.move_piece(utils::Square::B1, utils::Square::C3, knight);
+        board.move_piece(utils::Square::E1, utils::Square::G1, white_king);
 
         assert_eq!(board.mailbox[utils::Square::B1], None);
         assert_eq!(board.mailbox[utils::Square::C3], Some(knight));
+        assert_eq!(board.mailbox[utils::Square::E1], None);
+        assert_eq!(board.mailbox[utils::Square::G1], Some(white_king));
+        assert_eq!(
+            board.kings[utils::Color::White as usize],
+            utils::Square::G1
+        );
         assert_eq!(
             board.pieces[utils::PieceKind::Knight as usize],
             bitboard_with(&[utils::Square::C3])
         );
         assert_eq!(
+            board.pieces[utils::PieceKind::King as usize],
+            bitboard_with(&[utils::Square::G1, utils::Square::E8])
+        );
+        assert_eq!(
             board.colors[utils::Color::White as usize],
-            bitboard_with(&[utils::Square::C3])
+            bitboard_with(&[utils::Square::C3, utils::Square::G1])
         );
 
         board.clear_piece(utils::Square::H8, rook);
@@ -212,7 +246,7 @@ mod tests
         );
         assert_eq!(
             board.colors[utils::Color::Black as usize],
-            bitboard::BitBoard::default()
+            bitboard_with(&[utils::Square::E8])
         );
     }
 

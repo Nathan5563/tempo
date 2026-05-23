@@ -498,6 +498,7 @@ mod tests
             utils::NUM_PIECE_KINDS];
         let mut colors =
             [super::super::bitboard::BitBoard::default(); utils::NUM_COLORS];
+        let mut kings = [utils::Square::A1; utils::NUM_COLORS];
 
         for square in utils::SQUARES
         {
@@ -505,11 +506,17 @@ mod tests
             {
                 pieces[piece.kind as usize].set(square);
                 colors[piece.color as usize].set(square);
+
+                if piece.kind == utils::PieceKind::King
+                {
+                    kings[piece.color as usize] = square;
+                }
             }
         }
 
         assert_eq!(pos.board.pieces, pieces);
         assert_eq!(pos.board.colors, colors);
+        assert_eq!(pos.board.kings, kings);
     }
 
     fn assert_unmake_restores(pos: &mut Position, mov: Move)
