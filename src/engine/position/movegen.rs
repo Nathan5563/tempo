@@ -1,25 +1,40 @@
-use super::{Position, bitboard::BitBoard, makemove, super::utils};
+use crate::engine::utils::{
+    CastlingRights,
+    Color,
+    MAX_NUM_MOVES,
+    Piece,
+    PieceKind,
+    SQUARES,
+    Square,
+    enpassant_target,
+};
+
+use super::{
+    Position,
+    bitboard::BitBoard,
+    makemove::{self, Move, MoveKind},
+};
 
 mod attacks;
 
-const PROMOTIONS: [makemove::MoveKind; 4] = [
-    makemove::MoveKind::PromoteQueen,
-    makemove::MoveKind::PromoteRook,
-    makemove::MoveKind::PromoteBishop,
-    makemove::MoveKind::PromoteKnight,
+const PROMOTIONS: [MoveKind; 4] = [
+    MoveKind::PromoteQueen,
+    MoveKind::PromoteRook,
+    MoveKind::PromoteBishop,
+    MoveKind::PromoteKnight,
 ];
 
-const PROMOTION_CAPTURES: [makemove::MoveKind; 4] = [
-    makemove::MoveKind::PromoteQueenCapture,
-    makemove::MoveKind::PromoteRookCapture,
-    makemove::MoveKind::PromoteBishopCapture,
-    makemove::MoveKind::PromoteKnightCapture,
+const PROMOTION_CAPTURES: [MoveKind; 4] = [
+    MoveKind::PromoteQueenCapture,
+    MoveKind::PromoteRookCapture,
+    MoveKind::PromoteBishopCapture,
+    MoveKind::PromoteKnightCapture,
 ];
 
 #[derive(Debug)]
 pub struct MoveList
 {
-    arr: [makemove::Move; utils::MAX_NUM_MOVES],
+    arr: [Move; MAX_NUM_MOVES],
     len: usize
 }
 
@@ -27,7 +42,7 @@ impl Default for MoveList
 {
     fn default() -> Self
     {
-        Self { arr: [makemove::Move::default(); utils::MAX_NUM_MOVES], len: 0 }
+        Self { arr: [Move::default(); MAX_NUM_MOVES], len: 0 }
     }
 }
 
@@ -38,7 +53,7 @@ impl MoveList
         self.len
     }
 
-    pub fn as_slice(&self) -> &[makemove::Move]
+    pub fn as_slice(&self) -> &[Move]
     {
         &self.arr[..self.len]
     }
@@ -48,7 +63,7 @@ impl MoveList
         self.len = 0;
     }
 
-    fn push(&mut self, mov: makemove::Move)
+    fn push(&mut self, mov: Move)
     {
         self.arr[self.len] = mov;
         self.len += 1;
@@ -56,7 +71,7 @@ impl MoveList
 
     fn retain<F>(&mut self, mut keep: F)
     where
-        F: FnMut(makemove::Move) -> bool,
+        F: FnMut(Move) -> bool,
     {
         let mut write = 0;
 
@@ -91,35 +106,35 @@ fn generate_pseudolegal(pos: &Position, movelist: &mut MoveList)
         pos,
         movelist,
         active,
-        utils::PieceKind::Knight,
+        PieceKind::Knight,
         attacks::knight_attacks,
     );
     generate_sliders(
         pos,
         movelist,
         active,
-        utils::PieceKind::Bishop,
+        PieceKind::Bishop,
         attacks::bishop_attacks,
     );
     generate_sliders(
         pos,
         movelist,
         active,
-        utils::PieceKind::Rook,
+        PieceKind::Rook,
         attacks::rook_attacks,
     );
     generate_sliders(
         pos,
         movelist,
         active,
-        utils::PieceKind::Queen,
+        PieceKind::Queen,
         attacks::queen_attacks,
     );
     generate_piece_moves(
         pos,
         movelist,
         active,
-        utils::PieceKind::King,
+        PieceKind::King,
         attacks::king_attacks,
     );
     generate_castles(pos, movelist, active);
@@ -128,11 +143,11 @@ fn generate_pseudolegal(pos: &Position, movelist: &mut MoveList)
 fn generate_pawns(
     pos: &Position,
     movelist: &mut MoveList,
-    active: utils::Color,
+    active: Color,
 )
 {
     let pawns = pos.board.colors[active as usize]
-        & pos.board.pieces[utils::PieceKind::Pawn as usize];
+        & pos.board.pieces[PieceKind::Pawn as usize];
 
     for from in pawns
     {
@@ -144,8 +159,8 @@ fn generate_pawns(
 fn generate_pawn_pushes(
     pos: &Position,
     movelist: &mut MoveList,
-    active: utils::Color,
-    from: utils::Square,
+    active: Color,
+    from: Square,
 )
 {
     let from_index = from as usize;
@@ -153,7 +168,7 @@ fn generate_pawn_pushes(
     {
         return;
     };
-    let to_square = utils::SQUARES[to];
+    let to_square = SQUARES[to];
 
     if pos.board.mailbox[to_square].is_some()
     {
@@ -166,10 +181,10 @@ fn generate_pawn_pushes(
         return;
     }
 
-    movelist.push(makemove::Move::new(
+    movelist.push(Move::new(
         from,
         to_square,
-        makemove::MoveKind::Quiet,
+        MoveKind::Quiet,
     ));
 
     if !is_pawn_start_square(active, from_index)
@@ -178,14 +193,14 @@ fn generate_pawn_pushes(
     }
 
     let double_to = pawn_double_step(active, from_index);
-    let double_to_square = utils::SQUARES[double_to];
+    let double_to_square = SQUARES[double_to];
 
     if pos.board.mailbox[double_to_square].is_none()
     {
-        movelist.push(makemove::Move::new(
+        movelist.push(Move::new(
             from,
             double_to_square,
-            makemove::MoveKind::DoublePawnPush,
+            MoveKind::DoublePawnPush,
         ));
     }
 }
@@ -193,8 +208,8 @@ fn generate_pawn_pushes(
 fn generate_pawn_captures(
     pos: &Position,
     movelist: &mut MoveList,
-    active: utils::Color,
-    from: utils::Square,
+    active: Color,
+    from: Square,
 )
 {
     let attackers = attacks::pawn_attacks(from, active);
@@ -212,20 +227,20 @@ fn generate_pawn_captures(
             }
             else
             {
-                movelist.push(makemove::Move::new(
+                movelist.push(Move::new(
                     from,
                     to,
-                    makemove::MoveKind::Capture,
+                    MoveKind::Capture,
                 ));
             }
         }
         else if pos.state.enpassant == Some(to)
             && is_valid_enpassant_capture(pos, active, to)
         {
-            movelist.push(makemove::Move::new(
+            movelist.push(Move::new(
                 from,
                 to,
-                makemove::MoveKind::EnPassant,
+                MoveKind::EnPassant,
             ));
         }
     }
@@ -234,9 +249,9 @@ fn generate_pawn_captures(
 fn generate_piece_moves(
     pos: &Position,
     movelist: &mut MoveList,
-    active: utils::Color,
-    kind: utils::PieceKind,
-    attacks: fn(utils::Square) -> BitBoard,
+    active: Color,
+    kind: PieceKind,
+    attacks: fn(Square) -> BitBoard,
 )
 {
     let pieces = pos.board.colors[active as usize]
@@ -256,9 +271,9 @@ fn generate_piece_moves(
 fn generate_sliders(
     pos: &Position,
     movelist: &mut MoveList,
-    active: utils::Color,
-    kind: utils::PieceKind,
-    attacks: fn(utils::Square, BitBoard) -> BitBoard,
+    active: Color,
+    kind: PieceKind,
+    attacks: fn(Square, BitBoard) -> BitBoard,
 )
 {
     let pieces = pos.board.colors[active as usize]
@@ -278,7 +293,7 @@ fn generate_sliders(
 
 fn push_targets(
     movelist: &mut MoveList,
-    from: utils::Square,
+    from: Square,
     targets: BitBoard,
     capturable: BitBoard,
 )
@@ -287,72 +302,72 @@ fn push_targets(
     {
         let kind = if capturable.contains(to)
         {
-            makemove::MoveKind::Capture
+            MoveKind::Capture
         }
         else
         {
-            makemove::MoveKind::Quiet
+            MoveKind::Quiet
         };
-        movelist.push(makemove::Move::new(from, to, kind));
+        movelist.push(Move::new(from, to, kind));
     }
 }
 
 fn generate_castles(
     pos: &Position,
     movelist: &mut MoveList,
-    active: utils::Color,
+    active: Color,
 )
 {
     match active
     {
-        utils::Color::White =>
+        Color::White =>
         {
             try_castle(
                 pos,
                 movelist,
                 active,
-                utils::CastlingRights::WHITE_KINGSIDE,
-                utils::Square::E1,
-                utils::Square::H1,
-                utils::Square::G1,
-                &[utils::Square::F1, utils::Square::G1],
-                makemove::MoveKind::KingCastle,
+                CastlingRights::WHITE_KINGSIDE,
+                Square::E1,
+                Square::H1,
+                Square::G1,
+                &[Square::F1, Square::G1],
+                MoveKind::KingCastle,
             );
             try_castle(
                 pos,
                 movelist,
                 active,
-                utils::CastlingRights::WHITE_QUEENSIDE,
-                utils::Square::E1,
-                utils::Square::A1,
-                utils::Square::C1,
-                &[utils::Square::D1, utils::Square::C1, utils::Square::B1],
-                makemove::MoveKind::QueenCastle,
+                CastlingRights::WHITE_QUEENSIDE,
+                Square::E1,
+                Square::A1,
+                Square::C1,
+                &[Square::D1, Square::C1, Square::B1],
+                MoveKind::QueenCastle,
             );
         }
-        utils::Color::Black =>
+        Color::Black =>
         {
             try_castle(
                 pos,
                 movelist,
                 active,
-                utils::CastlingRights::BLACK_KINGSIDE,
-                utils::Square::E8,
-                utils::Square::H8,
-                utils::Square::G8,
-                &[utils::Square::F8, utils::Square::G8],
-                makemove::MoveKind::KingCastle,
+                CastlingRights::BLACK_KINGSIDE,
+                Square::E8,
+                Square::H8,
+                Square::G8,
+                &[Square::F8, Square::G8],
+                MoveKind::KingCastle,
             );
             try_castle(
                 pos,
                 movelist,
                 active,
-                utils::CastlingRights::BLACK_QUEENSIDE,
-                utils::Square::E8,
-                utils::Square::A8,
-                utils::Square::C8,
-                &[utils::Square::D8, utils::Square::C8, utils::Square::B8],
-                makemove::MoveKind::QueenCastle,
+                CastlingRights::BLACK_QUEENSIDE,
+                Square::E8,
+                Square::A8,
+                Square::C8,
+                &[Square::D8, Square::C8, Square::B8],
+                MoveKind::QueenCastle,
             );
         }
     }
@@ -361,13 +376,13 @@ fn generate_castles(
 fn try_castle(
     pos: &Position,
     movelist: &mut MoveList,
-    active: utils::Color,
+    active: Color,
     right: u8,
-    king_square: utils::Square,
-    rook_square: utils::Square,
-    to: utils::Square,
-    empty_squares: &[utils::Square],
-    kind: makemove::MoveKind,
+    king_square: Square,
+    rook_square: Square,
+    to: Square,
+    empty_squares: &[Square],
+    kind: MoveKind,
 )
 {
     if pos.state.castling.bits() & right == 0
@@ -377,20 +392,20 @@ fn try_castle(
 
     if can_castle(pos, active, king_square, rook_square, empty_squares)
     {
-        movelist.push(makemove::Move::new(king_square, to, kind));
+        movelist.push(Move::new(king_square, to, kind));
     }
 }
 
 fn can_castle(
     pos: &Position,
-    active: utils::Color,
-    king_square: utils::Square,
-    rook_square: utils::Square,
-    empty_squares: &[utils::Square],
+    active: Color,
+    king_square: Square,
+    rook_square: Square,
+    empty_squares: &[Square],
 ) -> bool
 {
-    let king = utils::Piece { color: active, kind: utils::PieceKind::King };
-    let rook = utils::Piece { color: active, kind: utils::PieceKind::Rook };
+    let king = Piece { color: active, kind: PieceKind::King };
+    let rook = Piece { color: active, kind: PieceKind::Rook };
 
     pos.board.mailbox[king_square] == Some(king)
         && pos.board.mailbox[rook_square] == Some(rook)
@@ -401,8 +416,8 @@ fn can_castle(
 
 fn push_promotions(
     movelist: &mut MoveList,
-    from: utils::Square,
-    to: utils::Square,
+    from: Square,
+    to: Square,
     capture: bool,
 )
 {
@@ -410,34 +425,34 @@ fn push_promotions(
 
     for kind in kinds
     {
-        movelist.push(makemove::Move::new(from, to, kind));
+        movelist.push(Move::new(from, to, kind));
     }
 }
 
 fn is_valid_enpassant_capture(
     pos: &Position,
-    active: utils::Color,
-    to: utils::Square,
+    active: Color,
+    to: Square,
 ) -> bool
 {
-    let capture_square = utils::enpassant_target(active, to);
-    let captured = utils::Piece {
+    let capture_square = enpassant_target(active, to);
+    let captured = Piece {
         color: active.opposite(),
-        kind: utils::PieceKind::Pawn,
+        kind: PieceKind::Pawn,
     };
 
     pos.board.mailbox[capture_square] == Some(captured)
 }
 
-fn pawn_step(active: utils::Color, from: usize) -> Option<usize>
+fn pawn_step(active: Color, from: usize) -> Option<usize>
 {
     match active
     {
-        utils::Color::White if from <= utils::Square::H7 as usize =>
+        Color::White if from <= Square::H7 as usize =>
         {
             Some(from + 8)
         }
-        utils::Color::Black if from >= utils::Square::A2 as usize =>
+        Color::Black if from >= Square::A2 as usize =>
         {
             Some(from - 8)
         }
@@ -445,55 +460,55 @@ fn pawn_step(active: utils::Color, from: usize) -> Option<usize>
     }
 }
 
-fn pawn_double_step(active: utils::Color, from: usize) -> usize
+fn pawn_double_step(active: Color, from: usize) -> usize
 {
     match active
     {
-        utils::Color::White =>
+        Color::White =>
         {
             from + 16
         }
-        utils::Color::Black =>
+        Color::Black =>
         {
             from - 16
         }
     }
 }
 
-fn is_pawn_start_square(active: utils::Color, square: usize) -> bool
+fn is_pawn_start_square(active: Color, square: usize) -> bool
 {
     match active
     {
-        utils::Color::White =>
+        Color::White =>
         {
-            square >= utils::Square::A2 as usize
-                && square <= utils::Square::H2 as usize
+            square >= Square::A2 as usize
+                && square <= Square::H2 as usize
         }
-        utils::Color::Black =>
+        Color::Black =>
         {
-            square >= utils::Square::A7 as usize
-                && square <= utils::Square::H7 as usize
+            square >= Square::A7 as usize
+                && square <= Square::H7 as usize
         }
     }
 }
 
-fn is_promotion_square(active: utils::Color, square: usize) -> bool
+fn is_promotion_square(active: Color, square: usize) -> bool
 {
     match active
     {
-        utils::Color::White => square >= utils::Square::A8 as usize,
-        utils::Color::Black => square <= utils::Square::H1 as usize,
+        Color::White => square >= Square::A8 as usize,
+        Color::Black => square <= Square::H1 as usize,
     }
 }
 
-fn is_legal(pos: &mut Position, mov: makemove::Move) -> bool
+fn is_legal(pos: &mut Position, mov: Move) -> bool
 {
     let active = pos.state.active;
     let attacker = active.opposite();
 
     if matches!(
         mov.kind(),
-        makemove::MoveKind::KingCastle | makemove::MoveKind::QueenCastle,
+        MoveKind::KingCastle | MoveKind::QueenCastle,
     )
     {
         return is_legal_castle(pos, mov, active, attacker);
@@ -509,36 +524,36 @@ fn is_legal(pos: &mut Position, mov: makemove::Move) -> bool
 
 fn is_legal_castle(
     pos: &Position,
-    mov: makemove::Move,
-    active: utils::Color,
-    attacker: utils::Color,
+    mov: Move,
+    active: Color,
+    attacker: Color,
 ) -> bool
 {
     match (active, mov.kind())
     {
-        (utils::Color::White, makemove::MoveKind::KingCastle) =>
+        (Color::White, MoveKind::KingCastle) =>
         {
-            !is_square_attacked(pos, utils::Square::E1, attacker)
-                && !is_square_attacked(pos, utils::Square::F1, attacker)
-                && !is_square_attacked(pos, utils::Square::G1, attacker)
+            !is_square_attacked(pos, Square::E1, attacker)
+                && !is_square_attacked(pos, Square::F1, attacker)
+                && !is_square_attacked(pos, Square::G1, attacker)
         }
-        (utils::Color::White, makemove::MoveKind::QueenCastle) =>
+        (Color::White, MoveKind::QueenCastle) =>
         {
-            !is_square_attacked(pos, utils::Square::E1, attacker)
-                && !is_square_attacked(pos, utils::Square::D1, attacker)
-                && !is_square_attacked(pos, utils::Square::C1, attacker)
+            !is_square_attacked(pos, Square::E1, attacker)
+                && !is_square_attacked(pos, Square::D1, attacker)
+                && !is_square_attacked(pos, Square::C1, attacker)
         }
-        (utils::Color::Black, makemove::MoveKind::KingCastle) =>
+        (Color::Black, MoveKind::KingCastle) =>
         {
-            !is_square_attacked(pos, utils::Square::E8, attacker)
-                && !is_square_attacked(pos, utils::Square::F8, attacker)
-                && !is_square_attacked(pos, utils::Square::G8, attacker)
+            !is_square_attacked(pos, Square::E8, attacker)
+                && !is_square_attacked(pos, Square::F8, attacker)
+                && !is_square_attacked(pos, Square::G8, attacker)
         }
-        (utils::Color::Black, makemove::MoveKind::QueenCastle) =>
+        (Color::Black, MoveKind::QueenCastle) =>
         {
-            !is_square_attacked(pos, utils::Square::E8, attacker)
-                && !is_square_attacked(pos, utils::Square::D8, attacker)
-                && !is_square_attacked(pos, utils::Square::C8, attacker)
+            !is_square_attacked(pos, Square::E8, attacker)
+                && !is_square_attacked(pos, Square::D8, attacker)
+                && !is_square_attacked(pos, Square::C8, attacker)
         }
         _ => true,
     }
@@ -546,18 +561,18 @@ fn is_legal_castle(
 
 fn is_square_attacked(
     pos: &Position,
-    square: utils::Square,
-    attacker: utils::Color,
+    square: Square,
+    attacker: Color,
 ) -> bool
 {
     let occupied = pos.board.occupied();
     let attackers = pos.board.colors[attacker as usize];
-    let pawns = attackers & pos.board.pieces[utils::PieceKind::Pawn as usize];
-    let knights = attackers & pos.board.pieces[utils::PieceKind::Knight as usize];
-    let bishops = attackers & pos.board.pieces[utils::PieceKind::Bishop as usize];
-    let rooks = attackers & pos.board.pieces[utils::PieceKind::Rook as usize];
-    let queens = attackers & pos.board.pieces[utils::PieceKind::Queen as usize];
-    let king = attackers & pos.board.pieces[utils::PieceKind::King as usize];
+    let pawns = attackers & pos.board.pieces[PieceKind::Pawn as usize];
+    let knights = attackers & pos.board.pieces[PieceKind::Knight as usize];
+    let bishops = attackers & pos.board.pieces[PieceKind::Bishop as usize];
+    let rooks = attackers & pos.board.pieces[PieceKind::Rook as usize];
+    let queens = attackers & pos.board.pieces[PieceKind::Queen as usize];
+    let king = attackers & pos.board.pieces[PieceKind::King as usize];
 
     !(attacks::pawn_attacks(square, attacker.opposite()) & pawns).is_empty()
         || !(attacks::knight_attacks(square) & knights).is_empty()
@@ -583,9 +598,9 @@ mod tests
 
     fn has_move(
         movelist: &MoveList,
-        from: utils::Square,
-        to: utils::Square,
-        kind: makemove::MoveKind,
+        from: Square,
+        to: Square,
+        kind: MoveKind,
     ) -> bool
     {
         movelist
@@ -633,10 +648,10 @@ mod tests
     fn movelist_reports_len_and_slice()
     {
         let mut movelist = MoveList::default();
-        let mov = makemove::Move::new(
-            utils::Square::E2,
-            utils::Square::E4,
-            makemove::MoveKind::DoublePawnPush,
+        let mov = Move::new(
+            Square::E2,
+            Square::E4,
+            MoveKind::DoublePawnPush,
         );
 
         assert_eq!(movelist.len(), 0);
@@ -654,39 +669,39 @@ mod tests
 
         assert!(has_move(
             &quiets,
-            utils::Square::E2,
-            utils::Square::E3,
-            makemove::MoveKind::Quiet,
+            Square::E2,
+            Square::E3,
+            MoveKind::Quiet,
         ));
         assert!(has_move(
             &quiets,
-            utils::Square::E2,
-            utils::Square::E4,
-            makemove::MoveKind::DoublePawnPush,
+            Square::E2,
+            Square::E4,
+            MoveKind::DoublePawnPush,
         ));
 
         let captures = moves("4k2r/6P1/8/8/8/8/8/4K3 w - - 0 1");
 
         assert!(has_move(
             &captures,
-            utils::Square::G7,
-            utils::Square::G8,
-            makemove::MoveKind::PromoteQueen,
+            Square::G7,
+            Square::G8,
+            MoveKind::PromoteQueen,
         ));
         assert!(has_move(
             &captures,
-            utils::Square::G7,
-            utils::Square::H8,
-            makemove::MoveKind::PromoteQueenCapture,
+            Square::G7,
+            Square::H8,
+            MoveKind::PromoteQueenCapture,
         ));
 
         let enpassant = moves("k7/8/8/3pP3/8/8/8/4K3 w - d6 0 1");
 
         assert!(has_move(
             &enpassant,
-            utils::Square::E5,
-            utils::Square::D6,
-            makemove::MoveKind::EnPassant,
+            Square::E5,
+            Square::D6,
+            MoveKind::EnPassant,
         ));
     }
 
@@ -697,9 +712,9 @@ mod tests
 
         assert!(!has_move(
             &movelist,
-            utils::Square::E5,
-            utils::Square::D6,
-            makemove::MoveKind::EnPassant,
+            Square::E5,
+            Square::D6,
+            MoveKind::EnPassant,
         ));
     }
 
@@ -710,60 +725,60 @@ mod tests
 
         assert!(has_move(
             &clear,
-            utils::Square::E1,
-            utils::Square::G1,
-            makemove::MoveKind::KingCastle,
+            Square::E1,
+            Square::G1,
+            MoveKind::KingCastle,
         ));
         assert!(has_move(
             &clear,
-            utils::Square::E1,
-            utils::Square::C1,
-            makemove::MoveKind::QueenCastle,
+            Square::E1,
+            Square::C1,
+            MoveKind::QueenCastle,
         ));
 
         let blocked = moves("4k3/8/8/8/8/8/8/R2BK2R w KQ - 0 1");
 
         assert!(!has_move(
             &blocked,
-            utils::Square::E1,
-            utils::Square::C1,
-            makemove::MoveKind::QueenCastle,
+            Square::E1,
+            Square::C1,
+            MoveKind::QueenCastle,
         ));
         assert!(has_move(
             &blocked,
-            utils::Square::E1,
-            utils::Square::G1,
-            makemove::MoveKind::KingCastle,
+            Square::E1,
+            Square::G1,
+            MoveKind::KingCastle,
         ));
 
         let through_check = moves("4kr2/8/8/8/8/8/8/R3K2R w KQ - 0 1");
 
         assert!(!has_move(
             &through_check,
-            utils::Square::E1,
-            utils::Square::G1,
-            makemove::MoveKind::KingCastle,
+            Square::E1,
+            Square::G1,
+            MoveKind::KingCastle,
         ));
         assert!(has_move(
             &through_check,
-            utils::Square::E1,
-            utils::Square::C1,
-            makemove::MoveKind::QueenCastle,
+            Square::E1,
+            Square::C1,
+            MoveKind::QueenCastle,
         ));
 
         let black_clear = moves("r3k2r/8/8/8/8/8/8/R3K2R b KQkq - 0 1");
 
         assert!(has_move(
             &black_clear,
-            utils::Square::E8,
-            utils::Square::G8,
-            makemove::MoveKind::KingCastle,
+            Square::E8,
+            Square::G8,
+            MoveKind::KingCastle,
         ));
         assert!(has_move(
             &black_clear,
-            utils::Square::E8,
-            utils::Square::C8,
-            makemove::MoveKind::QueenCastle,
+            Square::E8,
+            Square::C8,
+            MoveKind::QueenCastle,
         ));
     }
 
@@ -774,27 +789,27 @@ mod tests
 
         assert!(!has_move(
             &in_check,
-            utils::Square::E1,
-            utils::Square::E2,
-            makemove::MoveKind::Quiet,
+            Square::E1,
+            Square::E2,
+            MoveKind::Quiet,
         ));
 
         let pinned = moves("k3r3/8/8/8/8/8/4R3/4K3 w - - 0 1");
 
         assert!(!has_move(
             &pinned,
-            utils::Square::E2,
-            utils::Square::D2,
-            makemove::MoveKind::Quiet,
+            Square::E2,
+            Square::D2,
+            MoveKind::Quiet,
         ));
 
         let kings = moves("8/8/8/8/8/4k3/8/4K3 w - - 0 1");
 
         assert!(!has_move(
             &kings,
-            utils::Square::E1,
-            utils::Square::E2,
-            makemove::MoveKind::Quiet,
+            Square::E1,
+            Square::E2,
+            MoveKind::Quiet,
         ));
     }
 
@@ -809,45 +824,45 @@ mod tests
         generate_pawn_pushes(
             &pos,
             &mut movelist,
-            utils::Color::White,
-            utils::Square::A8,
+            Color::White,
+            Square::A8,
         );
 
         assert_eq!(movelist.len(), 0);
-        assert_eq!(pawn_step(utils::Color::White, utils::Square::A8 as usize), None);
-        assert_eq!(pawn_step(utils::Color::Black, utils::Square::H1 as usize), None);
+        assert_eq!(pawn_step(Color::White, Square::A8 as usize), None);
+        assert_eq!(pawn_step(Color::Black, Square::H1 as usize), None);
         assert_eq!(
-            pawn_double_step(utils::Color::White, utils::Square::E2 as usize),
-            utils::Square::E4 as usize
+            pawn_double_step(Color::White, Square::E2 as usize),
+            Square::E4 as usize
         );
         assert_eq!(
-            pawn_double_step(utils::Color::Black, utils::Square::D7 as usize),
-            utils::Square::D5 as usize
+            pawn_double_step(Color::Black, Square::D7 as usize),
+            Square::D5 as usize
         );
         assert!(is_pawn_start_square(
-            utils::Color::White,
-            utils::Square::A2 as usize,
+            Color::White,
+            Square::A2 as usize,
         ));
         assert!(is_pawn_start_square(
-            utils::Color::Black,
-            utils::Square::H7 as usize,
+            Color::Black,
+            Square::H7 as usize,
         ));
         assert!(is_promotion_square(
-            utils::Color::White,
-            utils::Square::A8 as usize,
+            Color::White,
+            Square::A8 as usize,
         ));
         assert!(is_promotion_square(
-            utils::Color::Black,
-            utils::Square::H1 as usize,
+            Color::Black,
+            Square::H1 as usize,
         ));
 
-        pos.state.active = utils::Color::Black;
+        pos.state.active = Color::Black;
         movelist.clear();
         generate_pawn_pushes(
             &pos,
             &mut movelist,
-            utils::Color::Black,
-            utils::Square::H1,
+            Color::Black,
+            Square::H1,
         );
 
         assert_eq!(movelist.len(), 0);
@@ -857,17 +872,17 @@ mod tests
     fn non_castle_move_is_legal_castle_fallback()
     {
         let pos = Position::new("4k3/8/8/8/8/8/8/4K3 w - - 0 1").unwrap();
-        let mov = makemove::Move::new(
-            utils::Square::E1,
-            utils::Square::E2,
-            makemove::MoveKind::Quiet,
+        let mov = Move::new(
+            Square::E1,
+            Square::E2,
+            MoveKind::Quiet,
         );
 
         assert!(is_legal_castle(
             &pos,
             mov,
-            utils::Color::White,
-            utils::Color::Black,
+            Color::White,
+            Color::Black,
         ));
     }
 

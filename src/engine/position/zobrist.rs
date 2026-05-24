@@ -1,16 +1,28 @@
-use super::{Position, super::utils, super::prng};
+use super::Position;
+
+use crate::engine::prng::Xoshiro256StarStar;
+use crate::engine::utils::{
+    CastlingRights,
+    Color,
+    NUM_COLORS,
+    NUM_PIECE_KINDS,
+    NUM_SQUARES,
+    Piece,
+    SQUARES,
+    Square,
+};
 
 pub type ZobristType = u64;
 const NUM_CASTLING_STATES: usize = 16;
 const NUM_ENPASSANT_STATES: usize = 17;
 const PRNG_SEED: u64 = 42;
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct ZobristRandoms
 {
-    active: [ZobristType; utils::NUM_COLORS],
-    pieces: [[[ZobristType; utils::NUM_SQUARES]; utils::NUM_PIECE_KINDS];
-        utils::NUM_COLORS],
+    active: [ZobristType; NUM_COLORS],
+    pieces: [[[ZobristType; NUM_SQUARES]; NUM_PIECE_KINDS];
+        NUM_COLORS],
     castling: [ZobristType; NUM_CASTLING_STATES],
     enpassant: [ZobristType; NUM_ENPASSANT_STATES],
 }
@@ -19,11 +31,11 @@ impl Default for ZobristRandoms
 {
     fn default() -> Self
     {
-        let mut rng = prng::Xoshiro256StarStar::from_seed(PRNG_SEED);
-        let active = [(); utils::NUM_COLORS].map(|_| rng.next_u64());
-        let pieces = [(); utils::NUM_COLORS].map(|_| {
-            [(); utils::NUM_PIECE_KINDS]
-                .map(|_| [(); utils::NUM_SQUARES].map(|_| rng.next_u64()))
+        let mut rng = Xoshiro256StarStar::from_seed(PRNG_SEED);
+        let active = [(); NUM_COLORS].map(|_| rng.next_u64());
+        let pieces = [(); NUM_COLORS].map(|_| {
+            [(); NUM_PIECE_KINDS]
+                .map(|_| [(); NUM_SQUARES].map(|_| rng.next_u64()))
         });
         let castling = [(); NUM_CASTLING_STATES].map(|_| rng.next_u64());
         let enpassant = [(); NUM_ENPASSANT_STATES].map(|_| rng.next_u64());
@@ -37,7 +49,7 @@ impl ZobristRandoms
     {
         let mut key = 0;
 
-        for square in utils::SQUARES
+        for square in SQUARES
         {
             if let Some(piece) = pos.board.mailbox[square]
             {
@@ -52,28 +64,28 @@ impl ZobristRandoms
         key
     }
 
-    pub fn piece(&self, piece: utils::Piece, sq: utils::Square) -> ZobristType
+    pub fn piece(&self, piece: Piece, sq: Square) -> ZobristType
     {
         self.pieces[piece.color as usize][piece.kind as usize][sq as usize]
     }
 
-    pub fn active(&self, color: utils::Color) -> ZobristType
+    pub fn active(&self, color: Color) -> ZobristType
     {
         self.active[color as usize]
     }
 
-    pub fn castling(&self, rights: utils::CastlingRights) -> ZobristType
+    pub fn castling(&self, rights: CastlingRights) -> ZobristType
     {
         self.castling[rights.bits() as usize]
     }
 
-    pub fn enpassant(&self, square: Option<utils::Square>) -> ZobristType
+    pub fn enpassant(&self, square: Option<Square>) -> ZobristType
     {
         self.enpassant[enpassant_index(square)]
     }
 }
 
-fn enpassant_index(square: Option<utils::Square>) -> usize
+fn enpassant_index(square: Option<Square>) -> usize
 {
     match square
     {
@@ -81,15 +93,15 @@ fn enpassant_index(square: Option<utils::Square>) -> usize
         Some(square) =>
         {
             let index = square as usize;
-            if index >= utils::Square::A3 as usize
-                && index <= utils::Square::H3 as usize
+            if index >= Square::A3 as usize
+                && index <= Square::H3 as usize
             {
-                1 + index - utils::Square::A3 as usize
+                1 + index - Square::A3 as usize
             }
-            else if index >= utils::Square::A6 as usize
-                && index <= utils::Square::H6 as usize
+            else if index >= Square::A6 as usize
+                && index <= Square::H6 as usize
             {
-                9 + index - utils::Square::A6 as usize
+                9 + index - Square::A6 as usize
             }
             else
             {
@@ -102,28 +114,30 @@ fn enpassant_index(square: Option<utils::Square>) -> usize
 #[cfg(test)]
 mod tests
 {
+    use crate::engine::utils::PieceKind;
+
     use super::*;
 
-    fn piece(color: utils::Color, kind: utils::PieceKind) -> utils::Piece
+    fn piece(color: Color, kind: PieceKind) -> Piece
     {
-        utils::Piece { color, kind }
+        Piece { color, kind }
     }
 
     fn indexed_randoms() -> ZobristRandoms
     {
         let mut randoms = ZobristRandoms {
             active: [101, 202],
-            pieces: [[[0; utils::NUM_SQUARES]; utils::NUM_PIECE_KINDS];
-                utils::NUM_COLORS],
+            pieces: [[[0; NUM_SQUARES]; NUM_PIECE_KINDS];
+                NUM_COLORS],
             castling: [0; NUM_CASTLING_STATES],
             enpassant: [0; NUM_ENPASSANT_STATES],
         };
 
-        for color in 0..utils::NUM_COLORS
+        for color in 0..NUM_COLORS
         {
-            for kind in 0..utils::NUM_PIECE_KINDS
+            for kind in 0..NUM_PIECE_KINDS
             {
-                for square in 0..utils::NUM_SQUARES
+                for square in 0..NUM_SQUARES
                 {
                     randoms.pieces[color][kind][square] = 1_000
                         + (color as u64 * 10_000)
@@ -148,17 +162,17 @@ mod tests
     fn default_randoms_are_deterministic_and_filled_in_prng_order()
     {
         let randoms = ZobristRandoms::default();
-        let mut rng = prng::Xoshiro256StarStar::from_seed(PRNG_SEED);
+        let mut rng = Xoshiro256StarStar::from_seed(PRNG_SEED);
 
-        for color in 0..utils::NUM_COLORS
+        for color in 0..NUM_COLORS
         {
             assert_eq!(randoms.active[color], rng.next_u64());
         }
-        for color in 0..utils::NUM_COLORS
+        for color in 0..NUM_COLORS
         {
-            for kind in 0..utils::NUM_PIECE_KINDS
+            for kind in 0..NUM_PIECE_KINDS
             {
-                for square in 0..utils::NUM_SQUARES
+                for square in 0..NUM_SQUARES
                 {
                     assert_eq!(
                         randoms.pieces[color][kind][square],
@@ -187,22 +201,22 @@ mod tests
     fn accessors_index_their_backing_tables()
     {
         let randoms = indexed_randoms();
-        let queen = piece(utils::Color::Black, utils::PieceKind::Queen);
-        let rights = utils::CastlingRights::from_bits(0b1011);
+        let queen = piece(Color::Black, PieceKind::Queen);
+        let rights = CastlingRights::from_bits(0b1011);
 
         assert_eq!(
-            randoms.piece(queen, utils::Square::H8),
+            randoms.piece(queen, Square::H8),
             randoms.pieces[1][4][63]
         );
-        assert_eq!(randoms.active(utils::Color::Black), randoms.active[1]);
+        assert_eq!(randoms.active(Color::Black), randoms.active[1]);
         assert_eq!(randoms.castling(rights), randoms.castling[0b1011]);
         assert_eq!(randoms.enpassant(None), randoms.enpassant[0]);
         assert_eq!(
-            randoms.enpassant(Some(utils::Square::A3)),
+            randoms.enpassant(Some(Square::A3)),
             randoms.enpassant[1]
         );
         assert_eq!(
-            randoms.enpassant(Some(utils::Square::H6)),
+            randoms.enpassant(Some(Square::H6)),
             randoms.enpassant[16]
         );
     }
@@ -212,22 +226,22 @@ mod tests
     {
         let randoms = indexed_randoms();
         let mut pos = Position::default();
-        let knight = piece(utils::Color::White, utils::PieceKind::Knight);
-        let queen = piece(utils::Color::Black, utils::PieceKind::Queen);
+        let knight = piece(Color::White, PieceKind::Knight);
+        let queen = piece(Color::Black, PieceKind::Queen);
 
-        pos.board.set_piece(utils::Square::B1, knight);
-        pos.board.set_piece(utils::Square::H8, queen);
-        pos.state.active = utils::Color::Black;
-        pos.state.castling = utils::CastlingRights::from_bits(0b1011);
-        pos.state.enpassant = Some(utils::Square::D6);
+        pos.board.set_piece(Square::B1, knight);
+        pos.board.set_piece(Square::H8, queen);
+        pos.state.active = Color::Black;
+        pos.state.castling = CastlingRights::from_bits(0b1011);
+        pos.state.enpassant = Some(Square::D6);
 
-        let expected = randoms.pieces[utils::Color::White as usize]
-            [utils::PieceKind::Knight as usize][utils::Square::B1 as usize]
-            ^ randoms.pieces[utils::Color::Black as usize]
-                [utils::PieceKind::Queen as usize][utils::Square::H8 as usize]
-            ^ randoms.active[utils::Color::Black as usize]
+        let expected = randoms.pieces[Color::White as usize]
+            [PieceKind::Knight as usize][Square::B1 as usize]
+            ^ randoms.pieces[Color::Black as usize]
+                [PieceKind::Queen as usize][Square::H8 as usize]
+            ^ randoms.active[Color::Black as usize]
             ^ randoms.castling[0b1011]
-            ^ randoms.enpassant[enpassant_index(Some(utils::Square::D6))];
+            ^ randoms.enpassant[enpassant_index(Some(Square::D6))];
 
         assert_eq!(randoms.hash(&pos), expected);
     }
@@ -239,8 +253,8 @@ mod tests
 
         for file in 0..8
         {
-            let third_rank = utils::SQUARES[utils::Square::A3 as usize + file];
-            let sixth_rank = utils::SQUARES[utils::Square::A6 as usize + file];
+            let third_rank = SQUARES[Square::A3 as usize + file];
+            let sixth_rank = SQUARES[Square::A6 as usize + file];
 
             assert_eq!(enpassant_index(Some(third_rank)), 1 + file);
             assert_eq!(enpassant_index(Some(sixth_rank)), 9 + file);
@@ -251,6 +265,6 @@ mod tests
     #[should_panic(expected = "Invalid en passant square")]
     fn enpassant_index_rejects_invalid_square()
     {
-        enpassant_index(Some(utils::Square::E4));
+        enpassant_index(Some(Square::E4));
     }
 }

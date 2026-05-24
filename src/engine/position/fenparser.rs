@@ -1,5 +1,13 @@
-use super::super::utils;
 use super::{Board, History, Position, State};
+
+use crate::engine::utils::{
+    CastlingRights,
+    Color,
+    Piece,
+    PieceKind,
+    SQUARES,
+    Square,
+};
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Field
@@ -159,7 +167,7 @@ fn parse_rank(field: &str, rank: u8, board: &mut Board) -> Result<(), Error>
                     });
                 }
 
-                let square = utils::SQUARES[(rank as usize - 1) * 8 + file];
+                let square = SQUARES[(rank as usize - 1) * 8 + file];
                 board.set_piece(square, piece);
                 file += 1;
                 previous_empty_count = false;
@@ -180,46 +188,46 @@ fn parse_rank(field: &str, rank: u8, board: &mut Board) -> Result<(), Error>
     Ok(())
 }
 
-fn parse_piece(ch: char) -> Result<utils::Piece, Error>
+fn parse_piece(ch: char) -> Result<Piece, Error>
 {
     let color = if ch.is_ascii_uppercase()
     {
-        utils::Color::White
+        Color::White
     }
     else
     {
-        utils::Color::Black
+        Color::Black
     };
 
     let kind = match ch.to_ascii_lowercase()
     {
-        'p' => utils::PieceKind::Pawn,
-        'n' => utils::PieceKind::Knight,
-        'b' => utils::PieceKind::Bishop,
-        'r' => utils::PieceKind::Rook,
-        'q' => utils::PieceKind::Queen,
-        'k' => utils::PieceKind::King,
+        'p' => PieceKind::Pawn,
+        'n' => PieceKind::Knight,
+        'b' => PieceKind::Bishop,
+        'r' => PieceKind::Rook,
+        'q' => PieceKind::Queen,
+        'k' => PieceKind::King,
         _ => return Err(Error::InvalidPiece(ch)),
     };
 
-    Ok(utils::Piece { color, kind })
+    Ok(Piece { color, kind })
 }
 
-fn parse_active(field: &str) -> Result<utils::Color, Error>
+fn parse_active(field: &str) -> Result<Color, Error>
 {
     match field
     {
-        "w" => Ok(utils::Color::White),
-        "b" => Ok(utils::Color::Black),
+        "w" => Ok(Color::White),
+        "b" => Ok(Color::Black),
         _ => Err(Error::InvalidActiveColor),
     }
 }
 
-fn parse_castling(field: &str) -> Result<utils::CastlingRights, Error>
+fn parse_castling(field: &str) -> Result<CastlingRights, Error>
 {
     if field == "-"
     {
-        return Ok(utils::CastlingRights::from_bits(0));
+        return Ok(CastlingRights::from_bits(0));
     }
 
     let mut bits = 0;
@@ -229,10 +237,10 @@ fn parse_castling(field: &str) -> Result<utils::CastlingRights, Error>
     {
         let (bit, order) = match ch
         {
-            'K' => (utils::CastlingRights::WHITE_KINGSIDE, 1),
-            'Q' => (utils::CastlingRights::WHITE_QUEENSIDE, 2),
-            'k' => (utils::CastlingRights::BLACK_KINGSIDE, 3),
-            'q' => (utils::CastlingRights::BLACK_QUEENSIDE, 4),
+            'K' => (CastlingRights::WHITE_KINGSIDE, 1),
+            'Q' => (CastlingRights::WHITE_QUEENSIDE, 2),
+            'k' => (CastlingRights::BLACK_KINGSIDE, 3),
+            'q' => (CastlingRights::BLACK_QUEENSIDE, 4),
             _ => return Err(Error::InvalidCastling),
         };
 
@@ -250,13 +258,13 @@ fn parse_castling(field: &str) -> Result<utils::CastlingRights, Error>
         return Err(Error::InvalidCastling);
     }
 
-    Ok(utils::CastlingRights::from_bits(bits))
+    Ok(CastlingRights::from_bits(bits))
 }
 
 fn parse_enpassant(
     field: &str,
-    active: utils::Color,
-) -> Result<Option<utils::Square>, Error>
+    active: Color,
+) -> Result<Option<Square>, Error>
 {
     if field == "-"
     {
@@ -278,8 +286,8 @@ fn parse_enpassant(
 
     let expected_rank = match active
     {
-        utils::Color::White => b'6',
-        utils::Color::Black => b'3',
+        Color::White => b'6',
+        Color::Black => b'3',
     };
     if rank != expected_rank
     {
@@ -289,7 +297,7 @@ fn parse_enpassant(
     let file_index = (file - b'a') as usize;
     let rank_index = (rank - b'1') as usize;
 
-    Ok(Some(utils::SQUARES[rank_index * 8 + file_index]))
+    Ok(Some(SQUARES[rank_index * 8 + file_index]))
 }
 
 fn parse_halfmoves(field: &str) -> Result<u8, Error>
@@ -328,9 +336,9 @@ mod tests
 {
     use super::*;
 
-    fn piece(color: utils::Color, kind: utils::PieceKind) -> utils::Piece
+    fn piece(color: Color, kind: PieceKind) -> Piece
     {
-        utils::Piece { color, kind }
+        Piece { color, kind }
     }
 
     fn parse_error(fen: &str) -> Error
@@ -351,32 +359,32 @@ mod tests
         .unwrap();
 
         assert_eq!(
-            pos.board.mailbox[utils::Square::A1],
-            Some(piece(utils::Color::White, utils::PieceKind::Rook))
+            pos.board.mailbox[Square::A1],
+            Some(piece(Color::White, PieceKind::Rook))
         );
         assert_eq!(
-            pos.board.mailbox[utils::Square::E1],
-            Some(piece(utils::Color::White, utils::PieceKind::King))
+            pos.board.mailbox[Square::E1],
+            Some(piece(Color::White, PieceKind::King))
         );
         assert_eq!(
-            pos.board.mailbox[utils::Square::D8],
-            Some(piece(utils::Color::Black, utils::PieceKind::Queen))
+            pos.board.mailbox[Square::D8],
+            Some(piece(Color::Black, PieceKind::Queen))
         );
         assert_eq!(
-            pos.board.mailbox[utils::Square::H7],
-            Some(piece(utils::Color::Black, utils::PieceKind::Pawn))
+            pos.board.mailbox[Square::H7],
+            Some(piece(Color::Black, PieceKind::Pawn))
         );
         assert_eq!(
-            pos.board.kings[utils::Color::White as usize],
-            utils::Square::E1
+            pos.board.kings[Color::White as usize],
+            Square::E1
         );
         assert_eq!(
-            pos.board.kings[utils::Color::Black as usize],
-            utils::Square::E8
+            pos.board.kings[Color::Black as usize],
+            Square::E8
         );
-        assert_eq!(pos.board.mailbox[utils::Square::E4], None);
+        assert_eq!(pos.board.mailbox[Square::E4], None);
         assert_eq!(pos.state.key, 0);
-        assert_eq!(pos.state.active, utils::Color::White);
+        assert_eq!(pos.state.active, Color::White);
         assert_eq!(pos.state.castling.bits(), 0b1111);
         assert_eq!(pos.state.enpassant, None);
         assert_eq!(pos.state.halfmoves, 0);
@@ -394,11 +402,11 @@ mod tests
         )
         .unwrap();
 
-        assert_eq!(pos.state.active, utils::Color::White);
-        assert_eq!(pos.state.enpassant, Some(utils::Square::E6));
+        assert_eq!(pos.state.active, Color::White);
+        assert_eq!(pos.state.enpassant, Some(Square::E6));
         assert_eq!(
-            pos.board.mailbox[utils::Square::E5],
-            Some(piece(utils::Color::Black, utils::PieceKind::Pawn))
+            pos.board.mailbox[Square::E5],
+            Some(piece(Color::Black, PieceKind::Pawn))
         );
     }
 
@@ -413,11 +421,11 @@ mod tests
         )
         .unwrap();
 
-        assert_eq!(pos.state.active, utils::Color::Black);
-        assert_eq!(pos.state.enpassant, Some(utils::Square::E3));
+        assert_eq!(pos.state.active, Color::Black);
+        assert_eq!(pos.state.enpassant, Some(Square::E3));
         assert_eq!(
-            pos.board.mailbox[utils::Square::E4],
-            Some(piece(utils::Color::White, utils::PieceKind::Pawn))
+            pos.board.mailbox[Square::E4],
+            Some(piece(Color::White, PieceKind::Pawn))
         );
     }
 
@@ -583,16 +591,16 @@ mod tests
     fn failed_parse_does_not_mutate_position()
     {
         let mut pos = Position::default();
-        let rook = piece(utils::Color::White, utils::PieceKind::Rook);
-        pos.board.set_piece(utils::Square::A1, rook);
-        pos.state.active = utils::Color::Black;
+        let rook = piece(Color::White, PieceKind::Rook);
+        pos.board.set_piece(Square::A1, rook);
+        pos.state.active = Color::Black;
         pos.state.fullmoves = 9;
 
         let err = parse("8/8/8/8/8/8/8/8 w - - 0 0", &mut pos).unwrap_err();
 
         assert_eq!(err, Error::InvalidFullmoves);
-        assert_eq!(pos.board.mailbox[utils::Square::A1], Some(rook));
-        assert_eq!(pos.state.active, utils::Color::Black);
+        assert_eq!(pos.board.mailbox[Square::A1], Some(rook));
+        assert_eq!(pos.state.active, Color::Black);
         assert_eq!(pos.state.fullmoves, 9);
     }
 

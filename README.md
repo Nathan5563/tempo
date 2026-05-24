@@ -16,7 +16,7 @@ major version is `0`, there is no promise of public API stability, or even a pub
 
 ## Status
 
-`0.2.0` is complete, and is focused on correct legal move generation:
+`0.3.0` is complete, and is focused on basic UCI support:
 
 - Board representation with mailbox, piece bitboards, and color bitboards
 - FEN parsing into position state
@@ -29,11 +29,34 @@ major version is `0`, there is no promise of public API stability, or even a pub
 - Legal move filtering through make/unmake
 - Perft coverage for start position, Kiwipete, promotions, en passant, castling,
   pins, checks, and king adjacency
+- UCI command loop with `uci`, `isready`, `ucinewgame`, `position`, `go`, `stop`,
+  and `quit`
+- UCI position loading from `startpos`, arbitrary FEN, and legal UCI move lists
+- Best move reporting, including a legal fallback if search is stopped
+  immediately
+
+Search is intentionally minimal in `0.3.0` and just returns the first legal move for UCI support.
 
 Run the test suite:
 
 ```sh
 cargo test
+```
+
+Run the UCI engine:
+
+```sh
+cargo run --quiet
+```
+
+Example UCI session:
+
+```text
+uci
+isready
+position startpos moves e2e4
+go
+quit
 ```
 
 Run perft from the command line:

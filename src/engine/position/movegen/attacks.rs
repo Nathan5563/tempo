@@ -1,6 +1,13 @@
 #![allow(long_running_const_eval)]
 
-use super::super::{super::utils, bitboard::BitBoard};
+use crate::engine::position::bitboard::BitBoard;
+use crate::engine::utils::{
+    Color,
+    NUM_COLORS,
+    NUM_SQUARES,
+    Square,
+};
+
 use self::magics::{
     BISHOP_MAGICS,
     BISHOP_MASKS,
@@ -15,27 +22,27 @@ mod magics;
 const ROOK_TABLE_SIZE: usize = 4096;
 const BISHOP_TABLE_SIZE: usize = 512;
 
-static PAWN_ATTACKS: [[u64; utils::NUM_SQUARES]; utils::NUM_COLORS] = init_pawn_attacks();
-static KNIGHT_ATTACKS: [u64; utils::NUM_SQUARES] = init_knight_attacks();
-static KING_ATTACKS: [u64; utils::NUM_SQUARES] = init_king_attacks();
-static ROOK_ATTACKS: [[u64; ROOK_TABLE_SIZE]; utils::NUM_SQUARES] = init_rook_attacks();
-static BISHOP_ATTACKS: [[u64; BISHOP_TABLE_SIZE]; utils::NUM_SQUARES] = init_bishop_attacks();
+static PAWN_ATTACKS: [[u64; NUM_SQUARES]; NUM_COLORS] = init_pawn_attacks();
+static KNIGHT_ATTACKS: [u64; NUM_SQUARES] = init_knight_attacks();
+static KING_ATTACKS: [u64; NUM_SQUARES] = init_king_attacks();
+static ROOK_ATTACKS: [[u64; ROOK_TABLE_SIZE]; NUM_SQUARES] = init_rook_attacks();
+static BISHOP_ATTACKS: [[u64; BISHOP_TABLE_SIZE]; NUM_SQUARES] = init_bishop_attacks();
 
 pub(super) fn pawn_attacks(
-    square: utils::Square,
-    color: utils::Color,
+    square: Square,
+    color: Color,
 ) -> BitBoard
 {
     BitBoard::from_bits(PAWN_ATTACKS[color as usize][square as usize])
 }
 
-pub(super) fn knight_attacks(square: utils::Square) -> BitBoard
+pub(super) fn knight_attacks(square: Square) -> BitBoard
 {
     BitBoard::from_bits(KNIGHT_ATTACKS[square as usize])
 }
 
 pub(super) fn bishop_attacks(
-    square: utils::Square,
+    square: Square,
     occupied: BitBoard,
 ) -> BitBoard
 {
@@ -44,7 +51,7 @@ pub(super) fn bishop_attacks(
 }
 
 pub(super) fn rook_attacks(
-    square: utils::Square,
+    square: Square,
     occupied: BitBoard,
 ) -> BitBoard
 {
@@ -53,24 +60,24 @@ pub(super) fn rook_attacks(
 }
 
 pub(super) fn queen_attacks(
-    square: utils::Square,
+    square: Square,
     occupied: BitBoard,
 ) -> BitBoard
 {
     bishop_attacks(square, occupied) | rook_attacks(square, occupied)
 }
 
-pub(super) fn king_attacks(square: utils::Square) -> BitBoard
+pub(super) fn king_attacks(square: Square) -> BitBoard
 {
     BitBoard::from_bits(KING_ATTACKS[square as usize])
 }
 
-const fn init_pawn_attacks() -> [[u64; utils::NUM_SQUARES]; utils::NUM_COLORS]
+const fn init_pawn_attacks() -> [[u64; NUM_SQUARES]; NUM_COLORS]
 {
-    let mut attacks = [[0; utils::NUM_SQUARES]; utils::NUM_COLORS];
+    let mut attacks = [[0; NUM_SQUARES]; NUM_COLORS];
     let mut square = 0;
 
-    while square < utils::NUM_SQUARES
+    while square < NUM_SQUARES
     {
         let rank = rank(square);
         let file = file(square);
@@ -79,11 +86,11 @@ const fn init_pawn_attacks() -> [[u64; utils::NUM_SQUARES]; utils::NUM_COLORS]
         {
             if file > 0
             {
-                attacks[utils::Color::White as usize][square] |= bit(square + 7);
+                attacks[Color::White as usize][square] |= bit(square + 7);
             }
             if file < 7
             {
-                attacks[utils::Color::White as usize][square] |= bit(square + 9);
+                attacks[Color::White as usize][square] |= bit(square + 9);
             }
         }
 
@@ -91,11 +98,11 @@ const fn init_pawn_attacks() -> [[u64; utils::NUM_SQUARES]; utils::NUM_COLORS]
         {
             if file > 0
             {
-                attacks[utils::Color::Black as usize][square] |= bit(square - 9);
+                attacks[Color::Black as usize][square] |= bit(square - 9);
             }
             if file < 7
             {
-                attacks[utils::Color::Black as usize][square] |= bit(square - 7);
+                attacks[Color::Black as usize][square] |= bit(square - 7);
             }
         }
 
@@ -105,12 +112,12 @@ const fn init_pawn_attacks() -> [[u64; utils::NUM_SQUARES]; utils::NUM_COLORS]
     attacks
 }
 
-const fn init_knight_attacks() -> [u64; utils::NUM_SQUARES]
+const fn init_knight_attacks() -> [u64; NUM_SQUARES]
 {
-    let mut attacks = [0; utils::NUM_SQUARES];
+    let mut attacks = [0; NUM_SQUARES];
     let mut square = 0;
 
-    while square < utils::NUM_SQUARES
+    while square < NUM_SQUARES
     {
         attacks[square] = leaper_attacks(
             square,
@@ -131,12 +138,12 @@ const fn init_knight_attacks() -> [u64; utils::NUM_SQUARES]
     attacks
 }
 
-const fn init_king_attacks() -> [u64; utils::NUM_SQUARES]
+const fn init_king_attacks() -> [u64; NUM_SQUARES]
 {
-    let mut attacks = [0; utils::NUM_SQUARES];
+    let mut attacks = [0; NUM_SQUARES];
     let mut square = 0;
 
-    while square < utils::NUM_SQUARES
+    while square < NUM_SQUARES
     {
         attacks[square] = leaper_attacks(
             square,
@@ -157,12 +164,12 @@ const fn init_king_attacks() -> [u64; utils::NUM_SQUARES]
     attacks
 }
 
-const fn init_rook_attacks() -> [[u64; ROOK_TABLE_SIZE]; utils::NUM_SQUARES]
+const fn init_rook_attacks() -> [[u64; ROOK_TABLE_SIZE]; NUM_SQUARES]
 {
-    let mut attacks = [[0; ROOK_TABLE_SIZE]; utils::NUM_SQUARES];
+    let mut attacks = [[0; ROOK_TABLE_SIZE]; NUM_SQUARES];
     let mut square = 0;
 
-    while square < utils::NUM_SQUARES
+    while square < NUM_SQUARES
     {
         let mask = ROOK_MASKS[square];
         let mut subset = 0;
@@ -185,12 +192,12 @@ const fn init_rook_attacks() -> [[u64; ROOK_TABLE_SIZE]; utils::NUM_SQUARES]
     attacks
 }
 
-const fn init_bishop_attacks() -> [[u64; BISHOP_TABLE_SIZE]; utils::NUM_SQUARES]
+const fn init_bishop_attacks() -> [[u64; BISHOP_TABLE_SIZE]; NUM_SQUARES]
 {
-    let mut attacks = [[0; BISHOP_TABLE_SIZE]; utils::NUM_SQUARES];
+    let mut attacks = [[0; BISHOP_TABLE_SIZE]; NUM_SQUARES];
     let mut square = 0;
 
-    while square < utils::NUM_SQUARES
+    while square < NUM_SQUARES
     {
         let mask = BISHOP_MASKS[square];
         let mut subset = 0;
@@ -323,12 +330,14 @@ const fn is_square(rank: i32, file: i32) -> bool
 #[cfg(test)]
 mod tests
 {
+    use crate::engine::utils::SQUARES;
+
     use super::*;
 
     fn assert_attack_eq(
         actual: u64,
         expected: u64,
-        square: utils::Square,
+        square: Square,
         subset: u64,
     )
     {
@@ -339,38 +348,38 @@ mod tests
     fn leaper_attack_tables_cover_expected_squares()
     {
         assert_eq!(
-            knight_attacks(utils::Square::D4),
+            knight_attacks(Square::D4),
             BitBoard::from_bits(
-                bit(utils::Square::C2 as usize)
-                    | bit(utils::Square::E2 as usize)
-                    | bit(utils::Square::B3 as usize)
-                    | bit(utils::Square::F3 as usize)
-                    | bit(utils::Square::B5 as usize)
-                    | bit(utils::Square::F5 as usize)
-                    | bit(utils::Square::C6 as usize)
-                    | bit(utils::Square::E6 as usize)
+                bit(Square::C2 as usize)
+                    | bit(Square::E2 as usize)
+                    | bit(Square::B3 as usize)
+                    | bit(Square::F3 as usize)
+                    | bit(Square::B5 as usize)
+                    | bit(Square::F5 as usize)
+                    | bit(Square::C6 as usize)
+                    | bit(Square::E6 as usize)
             )
         );
         assert_eq!(
-            king_attacks(utils::Square::A1),
+            king_attacks(Square::A1),
             BitBoard::from_bits(
-                bit(utils::Square::A2 as usize)
-                    | bit(utils::Square::B2 as usize)
-                    | bit(utils::Square::B1 as usize)
+                bit(Square::A2 as usize)
+                    | bit(Square::B2 as usize)
+                    | bit(Square::B1 as usize)
             )
         );
         assert_eq!(
-            pawn_attacks(utils::Square::E4, utils::Color::White),
+            pawn_attacks(Square::E4, Color::White),
             BitBoard::from_bits(
-                bit(utils::Square::D5 as usize)
-                    | bit(utils::Square::F5 as usize)
+                bit(Square::D5 as usize)
+                    | bit(Square::F5 as usize)
             )
         );
         assert_eq!(
-            pawn_attacks(utils::Square::E4, utils::Color::Black),
+            pawn_attacks(Square::E4, Color::Black),
             BitBoard::from_bits(
-                bit(utils::Square::D3 as usize)
-                    | bit(utils::Square::F3 as usize)
+                bit(Square::D3 as usize)
+                    | bit(Square::F3 as usize)
             )
         );
     }
@@ -397,7 +406,7 @@ mod tests
                 let rooks = init_rook_attacks();
                 let bishops = init_bishop_attacks();
 
-                for square in 0..utils::NUM_SQUARES
+                for square in 0..NUM_SQUARES
                 {
                     assert_eq!(rooks[square], ROOK_ATTACKS[square]);
                     assert_eq!(bishops[square], BISHOP_ATTACKS[square]);
@@ -411,7 +420,7 @@ mod tests
     #[test]
     fn rook_magics_match_slow_attacks_for_every_relevant_occupancy()
     {
-        for square in 0..utils::NUM_SQUARES
+        for square in 0..NUM_SQUARES
         {
             let mask = ROOK_MASKS[square];
             let mut subset = 0;
@@ -419,7 +428,7 @@ mod tests
             loop
             {
                 let actual = rook_attacks(
-                    utils::SQUARES[square],
+                    SQUARES[square],
                     BitBoard::from_bits(subset),
                 )
                     .bits();
@@ -427,7 +436,7 @@ mod tests
                 assert_attack_eq(
                     actual,
                     expected,
-                    utils::SQUARES[square],
+                    SQUARES[square],
                     subset,
                 );
 
@@ -443,7 +452,7 @@ mod tests
     #[test]
     fn bishop_magics_match_slow_attacks_for_every_relevant_occupancy()
     {
-        for square in 0..utils::NUM_SQUARES
+        for square in 0..NUM_SQUARES
         {
             let mask = BISHOP_MASKS[square];
             let mut subset = 0;
@@ -451,7 +460,7 @@ mod tests
             loop
             {
                 let actual = bishop_attacks(
-                    utils::SQUARES[square],
+                    SQUARES[square],
                     BitBoard::from_bits(subset),
                 )
                     .bits();
@@ -459,7 +468,7 @@ mod tests
                 assert_attack_eq(
                     actual,
                     expected,
-                    utils::SQUARES[square],
+                    SQUARES[square],
                     subset,
                 );
 

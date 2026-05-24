@@ -1,44 +1,57 @@
-use super::utils;
-
 mod bitboard;
 mod fenparser;
 mod makemove;
 mod movegen;
 mod zobrist;
 
+use super::utils::{
+    CastlingRights,
+    Color,
+    Mailbox,
+    MAX_NUM_PLIES,
+    NUM_COLORS,
+    NUM_PIECE_KINDS,
+    Piece,
+    PieceKind,
+    Square,
+};
+
+use self::bitboard::BitBoard;
+use self::zobrist::{ZobristRandoms, ZobristType};
+
 pub use self::fenparser::Error as FenError;
 pub use self::makemove::{Move, MoveKind};
 pub use self::movegen::MoveList;
 
-#[derive(Debug, Default)]
+#[derive(Debug, Clone, Default)]
 struct Board
 {
-    pieces: [bitboard::BitBoard; utils::NUM_PIECE_KINDS],
-    colors: [bitboard::BitBoard; utils::NUM_COLORS],
-    mailbox: utils::Mailbox,
-    kings: [utils::Square; utils::NUM_COLORS],
+    pieces: [BitBoard; NUM_PIECE_KINDS],
+    colors: [BitBoard; NUM_COLORS],
+    mailbox: Mailbox,
+    kings: [Square; NUM_COLORS],
 }
 
 impl Board
 {
-    fn occupied(&self) -> bitboard::BitBoard
+    fn occupied(&self) -> BitBoard
     {
-        self.colors[utils::Color::White as usize]
-            | self.colors[utils::Color::Black as usize]
+        self.colors[Color::White as usize]
+            | self.colors[Color::Black as usize]
     }
 
-    fn set_piece(&mut self, square: utils::Square, piece: utils::Piece)
+    fn set_piece(&mut self, square: Square, piece: Piece)
     {
         self.pieces[piece.kind as usize].set(square);
         self.colors[piece.color as usize].set(square);
         self.mailbox[square] = Some(piece);
-        if piece.kind == utils::PieceKind::King
+        if piece.kind == PieceKind::King
         {
             self.kings[piece.color as usize] = square;
         }
     }
 
-    fn clear_piece(&mut self, square: utils::Square, piece: utils::Piece)
+    fn clear_piece(&mut self, square: Square, piece: Piece)
     {
         self.pieces[piece.kind as usize].clear(square);
         self.colors[piece.color as usize].clear(square);
@@ -47,9 +60,9 @@ impl Board
 
     fn move_piece(
         &mut self,
-        from: utils::Square,
-        to: utils::Square,
-        piece: utils::Piece,
+        from: Square,
+        to: Square,
+        piece: Piece,
     )
     {
         self.clear_piece(from, piece);
@@ -60,10 +73,10 @@ impl Board
 #[derive(Debug, Clone, Copy, Default)]
 struct State
 {
-    key: zobrist::ZobristType,
-    active: utils::Color,
-    castling: utils::CastlingRights,
-    enpassant: Option<utils::Square>,
+    key: ZobristType,
+    active: Color,
+    castling: CastlingRights,
+    enpassant: Option<Square>,
     halfmoves: u8,
     fullmoves: u16,
 }
@@ -72,14 +85,14 @@ struct State
 struct Undo
 {
     state: State,
-    mov: makemove::Move,
-    captured: Option<utils::Piece>,
+    mov: Move,
+    captured: Option<Piece>,
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 struct History
 {
-    arr: [Undo; utils::MAX_NUM_PLIES],
+    arr: [Undo; MAX_NUM_PLIES],
     len: usize
 }
 
@@ -87,7 +100,7 @@ impl Default for History
 {
     fn default() -> Self
     {
-        Self { arr: [Undo::default(); utils::MAX_NUM_PLIES], len: 0 }
+        Self { arr: [Undo::default(); MAX_NUM_PLIES], len: 0 }
     }
 }
 
@@ -106,13 +119,13 @@ impl History
     }
 }
 
-#[derive(Debug, Default)]
+#[derive(Debug, Clone, Default)]
 pub struct Position
 {
     board: Board,
     state: State,
     history: History,
-    zobrists: zobrist::ZobristRandoms,
+    zobrists: ZobristRandoms,
 }
 
 impl Position
@@ -144,16 +157,18 @@ impl Position
 #[cfg(test)]
 mod tests
 {
+    use crate::engine::utils::SQUARES;
+
     use super::*;
 
-    fn piece(color: utils::Color, kind: utils::PieceKind) -> utils::Piece
+    fn piece(color: Color, kind: PieceKind) -> Piece
     {
-        utils::Piece { color, kind }
+        Piece { color, kind }
     }
 
-    fn bitboard_with(squares: &[utils::Square]) -> bitboard::BitBoard
+    fn bitboard_with(squares: &[Square]) -> BitBoard
     {
-        let mut bitboard = bitboard::BitBoard::default();
+        let mut bitboard = BitBoard::default();
         for square in squares
         {
             bitboard.set(*square);
@@ -175,83 +190,83 @@ mod tests
     fn board_set_clear_and_move_keep_all_representations_in_sync()
     {
         let mut board = Board::default();
-        let knight = piece(utils::Color::White, utils::PieceKind::Knight);
-        let rook = piece(utils::Color::Black, utils::PieceKind::Rook);
-        let white_king = piece(utils::Color::White, utils::PieceKind::King);
-        let black_king = piece(utils::Color::Black, utils::PieceKind::King);
+        let knight = piece(Color::White, PieceKind::Knight);
+        let rook = piece(Color::Black, PieceKind::Rook);
+        let white_king = piece(Color::White, PieceKind::King);
+        let black_king = piece(Color::Black, PieceKind::King);
 
-        board.set_piece(utils::Square::B1, knight);
-        board.set_piece(utils::Square::H8, rook);
-        board.set_piece(utils::Square::E1, white_king);
-        board.set_piece(utils::Square::E8, black_king);
+        board.set_piece(Square::B1, knight);
+        board.set_piece(Square::H8, rook);
+        board.set_piece(Square::E1, white_king);
+        board.set_piece(Square::E8, black_king);
 
-        assert_eq!(board.mailbox[utils::Square::B1], Some(knight));
-        assert_eq!(board.mailbox[utils::Square::H8], Some(rook));
-        assert_eq!(board.mailbox[utils::Square::E1], Some(white_king));
-        assert_eq!(board.mailbox[utils::Square::E8], Some(black_king));
+        assert_eq!(board.mailbox[Square::B1], Some(knight));
+        assert_eq!(board.mailbox[Square::H8], Some(rook));
+        assert_eq!(board.mailbox[Square::E1], Some(white_king));
+        assert_eq!(board.mailbox[Square::E8], Some(black_king));
         assert_eq!(
-            board.kings[utils::Color::White as usize],
-            utils::Square::E1
+            board.kings[Color::White as usize],
+            Square::E1
         );
         assert_eq!(
-            board.kings[utils::Color::Black as usize],
-            utils::Square::E8
+            board.kings[Color::Black as usize],
+            Square::E8
         );
         assert_eq!(
-            board.pieces[utils::PieceKind::Knight as usize],
-            bitboard_with(&[utils::Square::B1])
+            board.pieces[PieceKind::Knight as usize],
+            bitboard_with(&[Square::B1])
         );
         assert_eq!(
-            board.pieces[utils::PieceKind::Rook as usize],
-            bitboard_with(&[utils::Square::H8])
+            board.pieces[PieceKind::Rook as usize],
+            bitboard_with(&[Square::H8])
         );
         assert_eq!(
-            board.pieces[utils::PieceKind::King as usize],
-            bitboard_with(&[utils::Square::E1, utils::Square::E8])
+            board.pieces[PieceKind::King as usize],
+            bitboard_with(&[Square::E1, Square::E8])
         );
         assert_eq!(
-            board.colors[utils::Color::White as usize],
-            bitboard_with(&[utils::Square::B1, utils::Square::E1])
+            board.colors[Color::White as usize],
+            bitboard_with(&[Square::B1, Square::E1])
         );
         assert_eq!(
-            board.colors[utils::Color::Black as usize],
-            bitboard_with(&[utils::Square::H8, utils::Square::E8])
-        );
-
-        board.move_piece(utils::Square::B1, utils::Square::C3, knight);
-        board.move_piece(utils::Square::E1, utils::Square::G1, white_king);
-
-        assert_eq!(board.mailbox[utils::Square::B1], None);
-        assert_eq!(board.mailbox[utils::Square::C3], Some(knight));
-        assert_eq!(board.mailbox[utils::Square::E1], None);
-        assert_eq!(board.mailbox[utils::Square::G1], Some(white_king));
-        assert_eq!(
-            board.kings[utils::Color::White as usize],
-            utils::Square::G1
-        );
-        assert_eq!(
-            board.pieces[utils::PieceKind::Knight as usize],
-            bitboard_with(&[utils::Square::C3])
-        );
-        assert_eq!(
-            board.pieces[utils::PieceKind::King as usize],
-            bitboard_with(&[utils::Square::G1, utils::Square::E8])
-        );
-        assert_eq!(
-            board.colors[utils::Color::White as usize],
-            bitboard_with(&[utils::Square::C3, utils::Square::G1])
+            board.colors[Color::Black as usize],
+            bitboard_with(&[Square::H8, Square::E8])
         );
 
-        board.clear_piece(utils::Square::H8, rook);
+        board.move_piece(Square::B1, Square::C3, knight);
+        board.move_piece(Square::E1, Square::G1, white_king);
 
-        assert_eq!(board.mailbox[utils::Square::H8], None);
+        assert_eq!(board.mailbox[Square::B1], None);
+        assert_eq!(board.mailbox[Square::C3], Some(knight));
+        assert_eq!(board.mailbox[Square::E1], None);
+        assert_eq!(board.mailbox[Square::G1], Some(white_king));
         assert_eq!(
-            board.pieces[utils::PieceKind::Rook as usize],
-            bitboard::BitBoard::default()
+            board.kings[Color::White as usize],
+            Square::G1
         );
         assert_eq!(
-            board.colors[utils::Color::Black as usize],
-            bitboard_with(&[utils::Square::E8])
+            board.pieces[PieceKind::Knight as usize],
+            bitboard_with(&[Square::C3])
+        );
+        assert_eq!(
+            board.pieces[PieceKind::King as usize],
+            bitboard_with(&[Square::G1, Square::E8])
+        );
+        assert_eq!(
+            board.colors[Color::White as usize],
+            bitboard_with(&[Square::C3, Square::G1])
+        );
+
+        board.clear_piece(Square::H8, rook);
+
+        assert_eq!(board.mailbox[Square::H8], None);
+        assert_eq!(
+            board.pieces[PieceKind::Rook as usize],
+            BitBoard::default()
+        );
+        assert_eq!(
+            board.colors[Color::Black as usize],
+            bitboard_with(&[Square::E8])
         );
     }
 
@@ -261,34 +276,34 @@ mod tests
         let first = Undo {
             state: State {
                 key: 11,
-                active: utils::Color::White,
-                castling: utils::CastlingRights::from_bits(0b0011),
-                enpassant: Some(utils::Square::E3),
+                active: Color::White,
+                castling: CastlingRights::from_bits(0b0011),
+                enpassant: Some(Square::E3),
                 halfmoves: 4,
                 fullmoves: 9,
             },
-            mov: makemove::Move::new(
-                utils::Square::E2,
-                utils::Square::E4,
-                makemove::MoveKind::DoublePawnPush,
+            mov: Move::new(
+                Square::E2,
+                Square::E4,
+                MoveKind::DoublePawnPush,
             ),
             captured: None,
         };
         let second = Undo {
             state: State {
                 key: 22,
-                active: utils::Color::Black,
-                castling: utils::CastlingRights::from_bits(0b1100),
-                enpassant: Some(utils::Square::D6),
+                active: Color::Black,
+                castling: CastlingRights::from_bits(0b1100),
+                enpassant: Some(Square::D6),
                 halfmoves: 0,
                 fullmoves: 10,
             },
-            mov: makemove::Move::new(
-                utils::Square::D7,
-                utils::Square::D5,
-                makemove::MoveKind::DoublePawnPush,
+            mov: Move::new(
+                Square::D7,
+                Square::D5,
+                MoveKind::DoublePawnPush,
             ),
-            captured: Some(piece(utils::Color::White, utils::PieceKind::Pawn)),
+            captured: Some(piece(Color::White, PieceKind::Pawn)),
         };
         let mut history = History::default();
 
@@ -311,20 +326,20 @@ mod tests
     {
         let pos = Position::default();
 
-        for square in utils::SQUARES
+        for square in SQUARES
         {
             assert_eq!(pos.board.mailbox[square], None);
         }
         assert_eq!(
             pos.board.pieces,
-            [bitboard::BitBoard::default(); utils::NUM_PIECE_KINDS]
+            [BitBoard::default(); NUM_PIECE_KINDS]
         );
         assert_eq!(
             pos.board.colors,
-            [bitboard::BitBoard::default(); utils::NUM_COLORS]
+            [BitBoard::default(); NUM_COLORS]
         );
         assert_eq!(pos.state.key, 0);
-        assert_eq!(pos.state.active, utils::Color::White);
+        assert_eq!(pos.state.active, Color::White);
         assert_eq!(pos.state.castling.bits(), 0);
         assert_eq!(pos.state.enpassant, None);
         assert_eq!(pos.state.halfmoves, 0);
@@ -335,29 +350,29 @@ mod tests
     fn position_make_and_unmake_delegate_to_makemove()
     {
         let mut pos = Position::default();
-        let pawn = piece(utils::Color::White, utils::PieceKind::Pawn);
-        let mov = makemove::Move::new(
-            utils::Square::E2,
-            utils::Square::E4,
-            makemove::MoveKind::DoublePawnPush,
+        let pawn = piece(Color::White, PieceKind::Pawn);
+        let mov = Move::new(
+            Square::E2,
+            Square::E4,
+            MoveKind::DoublePawnPush,
         );
 
-        pos.board.set_piece(utils::Square::E2, pawn);
+        pos.board.set_piece(Square::E2, pawn);
         pos.state.fullmoves = 1;
         pos.state.key = pos.zobrists.hash(&pos);
         let old_state = pos.state;
 
         pos.make_move(mov);
 
-        assert_eq!(pos.board.mailbox[utils::Square::E2], None);
-        assert_eq!(pos.board.mailbox[utils::Square::E4], Some(pawn));
-        assert_eq!(pos.state.active, utils::Color::Black);
-        assert_eq!(pos.state.enpassant, Some(utils::Square::E3));
+        assert_eq!(pos.board.mailbox[Square::E2], None);
+        assert_eq!(pos.board.mailbox[Square::E4], Some(pawn));
+        assert_eq!(pos.state.active, Color::Black);
+        assert_eq!(pos.state.enpassant, Some(Square::E3));
 
         pos.unmake_move();
 
-        assert_eq!(pos.board.mailbox[utils::Square::E2], Some(pawn));
-        assert_eq!(pos.board.mailbox[utils::Square::E4], None);
+        assert_eq!(pos.board.mailbox[Square::E2], Some(pawn));
+        assert_eq!(pos.board.mailbox[Square::E4], None);
         assert_state_eq(pos.state, old_state);
     }
 
@@ -386,11 +401,11 @@ mod tests
         let pos = Position::new("8/8/8/8/4P3/8/8/8 b - e3 0 1").unwrap();
 
         assert_eq!(
-            pos.board.mailbox[utils::Square::E4],
-            Some(piece(utils::Color::White, utils::PieceKind::Pawn))
+            pos.board.mailbox[Square::E4],
+            Some(piece(Color::White, PieceKind::Pawn))
         );
-        assert_eq!(pos.state.active, utils::Color::Black);
-        assert_eq!(pos.state.enpassant, Some(utils::Square::E3));
+        assert_eq!(pos.state.active, Color::Black);
+        assert_eq!(pos.state.enpassant, Some(Square::E3));
         assert_eq!(pos.state.halfmoves, 0);
         assert_eq!(pos.state.fullmoves, 1);
         assert_eq!(pos.state.key, pos.zobrists.hash(&pos));

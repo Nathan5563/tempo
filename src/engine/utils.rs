@@ -83,7 +83,7 @@ pub struct Piece
     pub kind: PieceKind,
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct Mailbox([Option<Piece>; NUM_SQUARES]);
 
 impl Default for Mailbox

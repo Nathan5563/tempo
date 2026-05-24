@@ -1,4 +1,4 @@
-use super::super::utils;
+use crate::engine::utils::{SQUARES, Square};
 
 #[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
 pub struct BitBoard(u64);
@@ -10,7 +10,7 @@ impl BitBoard
         Self(bits)
     }
 
-    pub const fn from_square(square: utils::Square) -> Self
+    pub const fn from_square(square: Square) -> Self
     {
         Self(1u64 << (square as u8))
     }
@@ -20,7 +20,7 @@ impl BitBoard
         self.0
     }
 
-    pub const fn contains(&self, square: utils::Square) -> bool
+    pub const fn contains(&self, square: Square) -> bool
     {
         (self.0 & (1u64 << (square as u8))) != 0
     }
@@ -30,17 +30,17 @@ impl BitBoard
         self.0 == 0
     }
 
-    pub fn set(&mut self, square: utils::Square)
+    pub fn set(&mut self, square: Square)
     {
         self.0 |= 1 << (square as u64);
     }
 
-    pub fn clear(&mut self, square: utils::Square)
+    pub fn clear(&mut self, square: Square)
     {
         self.0 &= !(1 << (square as u64));
     }
 
-    pub fn pop_lsb(&mut self) -> Option<utils::Square>
+    pub fn pop_lsb(&mut self) -> Option<Square>
     {
         if self.is_empty()
         {
@@ -49,7 +49,7 @@ impl BitBoard
 
         let index = self.0.trailing_zeros() as usize;
         self.0 &= self.0 - 1;
-        Some(utils::SQUARES[index])
+        Some(SQUARES[index])
     }
 }
 
@@ -58,7 +58,7 @@ pub struct Iter(BitBoard);
 
 impl Iterator for Iter
 {
-    type Item = utils::Square;
+    type Item = Square;
 
     fn next(&mut self) -> Option<Self::Item>
     {
@@ -68,7 +68,7 @@ impl Iterator for Iter
 
 impl IntoIterator for BitBoard
 {
-    type Item = utils::Square;
+    type Item = Square;
     type IntoIter = Iter;
 
     fn into_iter(self) -> Self::IntoIter
@@ -146,7 +146,7 @@ mod tests
 {
     use super::*;
 
-    fn bit(square: utils::Square) -> u64
+    fn bit(square: Square) -> u64
     {
         1u64 << (square as u64)
     }
@@ -163,7 +163,7 @@ mod tests
     #[test]
     fn set_maps_every_square_to_its_bit()
     {
-        for square in utils::SQUARES
+        for square in SQUARES
         {
             let mut bitboard = BitBoard::default();
 
@@ -178,16 +178,16 @@ mod tests
     #[test]
     fn from_bits_preserves_backing_bits()
     {
-        let bits = bit(utils::Square::A1)
-            | bit(utils::Square::D4)
-            | bit(utils::Square::H8);
+        let bits = bit(Square::A1)
+            | bit(Square::D4)
+            | bit(Square::H8);
         let bitboard = BitBoard::from_bits(bits);
 
         assert_eq!(bitboard.bits(), bits);
-        assert!(bitboard.contains(utils::Square::A1));
-        assert!(bitboard.contains(utils::Square::D4));
-        assert!(bitboard.contains(utils::Square::H8));
-        assert!(!bitboard.contains(utils::Square::E5));
+        assert!(bitboard.contains(Square::A1));
+        assert!(bitboard.contains(Square::D4));
+        assert!(bitboard.contains(Square::H8));
+        assert!(!bitboard.contains(Square::E5));
     }
 
     #[test]
@@ -195,16 +195,16 @@ mod tests
     {
         let mut bitboard = BitBoard::default();
 
-        bitboard.set(utils::Square::A1);
-        bitboard.set(utils::Square::D4);
-        bitboard.set(utils::Square::H8);
-        bitboard.set(utils::Square::D4);
+        bitboard.set(Square::A1);
+        bitboard.set(Square::D4);
+        bitboard.set(Square::H8);
+        bitboard.set(Square::D4);
 
         assert_eq!(
             bitboard.bits(),
-            bit(utils::Square::A1) 
-            | bit(utils::Square::D4) 
-            | bit(utils::Square::H8)
+            bit(Square::A1)
+            | bit(Square::D4)
+            | bit(Square::H8)
         );
     }
 
@@ -213,15 +213,15 @@ mod tests
     {
         let mut bitboard = BitBoard::default();
 
-        bitboard.set(utils::Square::A1);
-        bitboard.set(utils::Square::D4);
-        bitboard.set(utils::Square::H8);
+        bitboard.set(Square::A1);
+        bitboard.set(Square::D4);
+        bitboard.set(Square::H8);
 
-        bitboard.clear(utils::Square::D4);
+        bitboard.clear(Square::D4);
 
         assert_eq!(
             bitboard.bits(),
-            bit(utils::Square::A1) | bit(utils::Square::H8)
+            bit(Square::A1) | bit(Square::H8)
         );
     }
 
@@ -230,24 +230,24 @@ mod tests
     {
         let mut bitboard = BitBoard::default();
 
-        bitboard.set(utils::Square::B2);
-        bitboard.clear(utils::Square::C3);
+        bitboard.set(Square::B2);
+        bitboard.clear(Square::C3);
 
-        assert_eq!(bitboard.bits(), bit(utils::Square::B2));
+        assert_eq!(bitboard.bits(), bit(Square::B2));
     }
 
     #[test]
     fn pop_lsb_returns_squares_in_index_order()
     {
         let mut bitboard = BitBoard::from_bits(
-            bit(utils::Square::H8)
-                | bit(utils::Square::A1)
-                | bit(utils::Square::D4),
+            bit(Square::H8)
+                | bit(Square::A1)
+                | bit(Square::D4),
         );
 
-        assert_eq!(bitboard.pop_lsb(), Some(utils::Square::A1));
-        assert_eq!(bitboard.pop_lsb(), Some(utils::Square::D4));
-        assert_eq!(bitboard.pop_lsb(), Some(utils::Square::H8));
+        assert_eq!(bitboard.pop_lsb(), Some(Square::A1));
+        assert_eq!(bitboard.pop_lsb(), Some(Square::D4));
+        assert_eq!(bitboard.pop_lsb(), Some(Square::H8));
         assert_eq!(bitboard.pop_lsb(), None);
         assert!(bitboard.is_empty());
     }
@@ -256,40 +256,40 @@ mod tests
     fn bitwise_ops_preserve_bitboard_type()
     {
         let left = BitBoard::from_bits(
-            bit(utils::Square::A1) | bit(utils::Square::D4),
+            bit(Square::A1) | bit(Square::D4),
         );
         let right = BitBoard::from_bits(
-            bit(utils::Square::D4) | bit(utils::Square::H8),
+            bit(Square::D4) | bit(Square::H8),
         );
 
-        assert_eq!((left & right).bits(), bit(utils::Square::D4));
+        assert_eq!((left & right).bits(), bit(Square::D4));
         assert_eq!(
             (left | right).bits(),
-            bit(utils::Square::A1)
-                | bit(utils::Square::D4)
-                | bit(utils::Square::H8)
+            bit(Square::A1)
+                | bit(Square::D4)
+                | bit(Square::H8)
         );
         assert_eq!(
             (left ^ right).bits(),
-            bit(utils::Square::A1) | bit(utils::Square::H8)
+            bit(Square::A1) | bit(Square::H8)
         );
 
         let mut assigned = left;
         assigned &= right;
-        assert_eq!(assigned.bits(), bit(utils::Square::D4));
+        assert_eq!(assigned.bits(), bit(Square::D4));
 
-        assigned |= BitBoard::from_square(utils::Square::H8);
+        assigned |= BitBoard::from_square(Square::H8);
         assert_eq!(
             assigned.bits(),
-            bit(utils::Square::D4) | bit(utils::Square::H8)
+            bit(Square::D4) | bit(Square::H8)
         );
 
         assigned ^= BitBoard::from_bits(
-            bit(utils::Square::D4) | bit(utils::Square::A1),
+            bit(Square::D4) | bit(Square::A1),
         );
         assert_eq!(
             assigned.bits(),
-            bit(utils::Square::A1) | bit(utils::Square::H8)
+            bit(Square::A1) | bit(Square::H8)
         );
     }
 }
